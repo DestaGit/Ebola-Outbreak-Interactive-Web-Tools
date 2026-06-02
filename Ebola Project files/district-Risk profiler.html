@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>District Profiler · Ebola Data Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#04070f;--surface:#080d1e;--card:#0b1229;--border:#152040;--border-hi:#1e3060;
+      --orange:#f97316;--red:#ef4444;--green:#22c55e;--cyan:#22d3ee;--yellow:#fbbf24;
+      --purple:#c084fc;--text:#e2e8f0;--mid:#94a3b8;--muted:#475569;
+      --mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+    ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    @keyframes fade-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slide-in{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .hd{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:.05em;}
+    .hd-back{font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:5px 12px;border-radius:6px;}
+    .hd-back:hover{color:var(--text);border-color:var(--border-hi);}
+
+    main{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:14px;}
+
+    .page-header{animation:fade-up .4s ease both;}
+    .page-label{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+    .page-title{font-family:var(--display);font-size:28px;font-weight:900;color:var(--text);margin-bottom:4px;}
+    .page-desc{font-size:13px;color:var(--mid);line-height:1.6;max-width:640px;}
+
+    .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;animation:fade-up .4s ease .05s both;}
+    .ctrl-label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-right:4px;}
+    .btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .15s;}
+    .btn:hover{border-color:var(--border-hi);color:var(--text);}
+    .btn.active{border-color:var(--orange);color:var(--orange);background:rgba(249,115,22,.1);}
+    .btn.active.blue{border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,.08);}
+    .divider{width:1px;height:24px;background:var(--border);}
+
+    .content{display:grid;grid-template-columns:1fr 300px;gap:14px;flex:1;min-height:0;}
+    .district-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;align-content:start;}
+
+    .district-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color .2s,transform .15s,background .2s;}
+    .district-card:hover{border-color:var(--border-hi);transform:translateY(-2px);}
+    .district-card.selected{border-color:var(--orange);background:rgba(249,115,22,.06);}
+    .district-card.hidden{display:none;}
+
+    .dc-rank{font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-bottom:8px;}
+    .dc-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .dc-badge{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:3px;display:inline-block;margin-bottom:10px;}
+    .dc-stats{display:flex;justify-content:space-between;}
+    .dc-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:2px;}
+    .dc-stat-val{font-family:var(--mono);font-size:13px;font-weight:600;}
+    .dc-bar{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;}
+    .dc-bar-fill{height:100%;border-radius:2px;transition:width .5s ease;}
+    .dc-severity{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:4px;border:1px solid;margin-top:8px;display:inline-block;}
+
+    /* Detail panel */
+    .detail-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:sticky;top:74px;animation:slide-in .3s ease;}
+    .dp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;color:var(--muted);text-align:center;gap:8px;}
+    .dp-empty-icon{font-size:32px;opacity:.4;}
+    .dp-empty-text{font-family:var(--mono);font-size:10px;letter-spacing:.1em;}
+    .dp-label{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+    .dp-title{font-family:var(--display);font-size:26px;font-weight:900;color:var(--text);margin-bottom:4px;}
+    .dp-badge{font-family:var(--mono);font-size:9px;padding:2px 9px;border-radius:4px;margin-bottom:16px;display:inline-block;}
+    .dp-stat-row{display:flex;flex-direction:column;gap:2px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+    .dp-stat-val{font-family:var(--display);font-size:32px;font-weight:900;line-height:1;}
+    .dp-stat-sub{font-size:11px;color:var(--muted);}
+    .dp-bar-row{margin-bottom:10px;}
+    .dp-bar-label{display:flex;justify-content:space-between;margin-bottom:4px;}
+    .dp-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+    .dp-bar-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+    .dp-context{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--mid);line-height:1.6;margin-top:14px;}
+
+    footer{border-top:1px solid var(--border);padding:10px 28px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--muted);}
+    .ft-link{color:var(--muted);text-decoration:none;} .ft-link:hover{color:var(--mid);}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hd">📍 DISTRICT PROFILER</div>
+  <a class="hd-back" href="../index.html">← Hub</a>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="page-label">Tool 04 / 06 · Sub-national Analysis</div>
+    <div class="page-title">District Risk Profiler</div>
+    <div class="page-desc">Filter by country and sort by metric. Click any district card to open a detailed side panel with severity rating, CFR context, and comparative statistics.</div>
+  </div>
+
+  <div class="controls">
+    <span class="ctrl-label">Country</span>
+    <button class="btn active" id="f-all"  onclick="setFilter('ALL')">All</button>
+    <button class="btn"        id="f-SLE"  onclick="setFilter('SLE')">Sierra Leone</button>
+    <button class="btn"        id="f-LBR"  onclick="setFilter('LBR')">Liberia</button>
+    <button class="btn"        id="f-GIN"  onclick="setFilter('GIN')">Guinea</button>
+    <div class="divider"></div>
+    <span class="ctrl-label">Sort</span>
+    <button class="btn active blue" id="s-cases"  onclick="setSort('cases')">Cases ↓</button>
+    <button class="btn"             id="s-deaths" onclick="setSort('deaths')">Deaths ↓</button>
+    <button class="btn"             id="s-cfr"    onclick="setSort('cfr')">CFR ↓</button>
+  </div>
+
+  <div class="content">
+    <div class="district-grid" id="grid"></div>
+    <div id="detail-panel"></div>
+  </div>
+</main>
+
+<footer>
+  <span>SOURCES: WHO AFRO DISTRICT REPORTS · HDX · CDC MMWR · DATA APPROXIMATE</span>
+  <a class="ft-link" href="../index.html">← Back to Hub</a>
+</footer>
+
+<script>
+const COUNTRY_CLR = { SLE:'#f97316', LBR:'#c084fc', GIN:'#ef4444' };
+const COUNTRY_NAME = { SLE:'Sierra Leone', LBR:'Liberia', GIN:'Guinea' };
+const COUNTRY_CFR  = { SLE:28.0, LBR:45.1, GIN:66.7 };
+
+const DISTRICTS = [
+  {name:"Montserrado", iso:"LBR",cases:4258,deaths:1745,cfr:41.0},
+  {name:"Western Area",iso:"SLE",cases:3027,deaths:696, cfr:23.0},
+  {name:"Port Loko",   iso:"SLE",cases:1941,deaths:573, cfr:29.5},
+  {name:"Margibi",     iso:"LBR",cases:1831,deaths:762, cfr:41.6},
+  {name:"Bo",          iso:"SLE",cases:1459,deaths:348, cfr:23.8},
+  {name:"Kenema",      iso:"SLE",cases:1260,deaths:574, cfr:45.6},
+  {name:"Bombali",     iso:"SLE",cases:1325,deaths:432, cfr:32.6},
+  {name:"Lofa",        iso:"LBR",cases:1225,deaths:483, cfr:39.4},
+  {name:"Conakry",     iso:"GIN",cases:1145,deaths:548, cfr:47.9},
+  {name:"Guéckédou",   iso:"GIN",cases:980, deaths:663, cfr:67.7},
+  {name:"Kailahun",    iso:"SLE",cases:896, deaths:376, cfr:42.0},
+  {name:"Bomi",        iso:"LBR",cases:730, deaths:298, cfr:40.8},
+  {name:"Macenta",     iso:"GIN",cases:688, deaths:426, cfr:61.9},
+  {name:"Kambia",      iso:"SLE",cases:480, deaths:148, cfr:30.8},
+  {name:"Bong",        iso:"LBR",cases:445, deaths:182, cfr:40.9},
+];
+
+const MAX_CASES = 4258;
+let currentFilter = 'ALL', currentSort = 'cases', selectedName = null;
+
+function severity(cfr){ return cfr>60?['EXTREME','#ef4444']:cfr>40?['HIGH','#f97316']:cfr>25?['MODERATE','#fbbf24']:['ELEVATED','#22d3ee']; }
+
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  const data = [...DISTRICTS]
+    .filter(d => currentFilter==='ALL' || d.iso===currentFilter)
+    .sort((a,b)=>b[currentSort]-a[currentSort]);
+
+  data.forEach((d,i) => {
+    const clr = COUNTRY_CLR[d.iso];
+    const [sev,sc] = severity(d.cfr);
+    const isSelected = d.name === selectedName;
+    const card = document.createElement('div');
+    card.className = 'district-card' + (isSelected?' selected':'');
+    card.innerHTML = `
+      <div class="dc-rank">#${String(i+1).padStart(2,'0')} by ${currentSort}</div>
+      <div class="dc-name">${d.name}</div>
+      <div class="dc-badge" style="color:${clr};background:${clr}18">${COUNTRY_NAME[d.iso]}</div>
+      <div class="dc-stats">
+        <div><div class="dc-stat-lbl">CASES</div><div class="dc-stat-val" style="color:#f97316">${d.cases.toLocaleString()}</div></div>
+        <div><div class="dc-stat-lbl">DEATHS</div><div class="dc-stat-val" style="color:#ef4444">${d.deaths.toLocaleString()}</div></div>
+        <div><div class="dc-stat-lbl">CFR</div><div class="dc-stat-val" style="color:${sc}">${d.cfr.toFixed(1)}%</div></div>
+      </div>
+      <div class="dc-bar"><div class="dc-bar-fill" style="width:${(d.cases/MAX_CASES)*100}%;background:${clr}"></div></div>
+      <div class="dc-severity" style="color:${sc};border-color:${sc}44">${sev}</div>`;
+    card.onclick = () => { selectedName = d.name; buildGrid(); buildDetail(d); };
+    grid.appendChild(card);
+  });
+}
+
+function buildDetail(d) {
+  const clr  = COUNTRY_CLR[d.iso];
+  const [sev,sc] = severity(d.cfr);
+  const natCFR   = COUNTRY_CFR[d.iso];
+  const survivors= d.cases - d.deaths;
+  const pctCases = ((d.cases/28616)*100).toFixed(1);
+  const pctDeath = ((d.deaths/11310)*100).toFixed(1);
+
+  const context = {
+    'Montserrado': 'Monrovia, the Liberian capital, became the outbreak\'s largest urban epicenter. High population density, an overwhelmed JFK hospital, and bodies in the streets accelerated transmission in mid-2014.',
+    'Western Area': 'Freetown drove Sierra Leone\'s caseload. The densely populated capital strained the healthcare system and became ground zero for the national epidemic surge.',
+    'Guéckédou': 'Ground zero for the entire outbreak. The index case in late 2013 began in this forested border region. Proximity to Sierra Leone and Liberia enabled rapid cross-border spread.',
+    'Kenema': 'Kenema Government Hospital was the only Ebola referral centre in Sierra Leone until August 2014. High healthcare worker infection rates overwhelmed the facility early in the crisis.',
+    'Macenta': 'Among Guinea\'s highest CFR districts — 61.9%. Remote location, strained health infrastructure, and late case identification contributed to extreme mortality.',
+  };
+
+  document.getElementById('detail-panel').innerHTML = `
+    <div style="animation:slide-in .3s ease">
+      <div class="dp-label">Selected District</div>
+      <div class="dp-title">${d.name}</div>
+      <div class="dp-badge" style="color:${clr};background:${clr}18">${COUNTRY_NAME[d.iso]}</div>
+      <div class="dp-badge" style="color:${sc};border:1px solid ${sc}44;background:transparent;margin-left:6px">${sev}</div>
+
+      <div class="dp-stat-row">
+        <div class="dp-label">Total Cases</div>
+        <div class="dp-stat-val" style="color:#f97316">${d.cases.toLocaleString()}</div>
+        <div class="dp-stat-sub">${pctCases}% of all 28,616 recorded cases</div>
+      </div>
+      <div class="dp-stat-row">
+        <div class="dp-label">Total Deaths</div>
+        <div class="dp-stat-val" style="color:#ef4444">${d.deaths.toLocaleString()}</div>
+        <div class="dp-stat-sub">${pctDeath}% of all 11,310 deaths</div>
+      </div>
+      <div class="dp-stat-row">
+        <div class="dp-label">Survivors</div>
+        <div class="dp-stat-val" style="color:#22c55e">${survivors.toLocaleString()}</div>
+        <div class="dp-stat-sub">${(100-d.cfr).toFixed(1)}% survival rate</div>
+      </div>
+
+      <div class="dp-label" style="margin-bottom:10px">CFR Comparison</div>
+      ${[
+        {label:d.name, val:d.cfr, clr:sc},
+        {label:`${COUNTRY_NAME[d.iso]} Avg`, val:natCFR, clr},
+        {label:'Overall (39.5%)', val:39.5, clr:'#475569'},
+      ].map(r=>`
+        <div class="dp-bar-row">
+          <div class="dp-bar-label">
+            <span style="font-size:11px;color:#e2e8f0">${r.label}</span>
+            <span style="font-family:var(--mono);font-size:12px;color:${r.clr};font-weight:600">${r.val.toFixed(1)}%</span>
+          </div>
+          <div class="dp-bar-track">
+            <div class="dp-bar-fill" style="width:${r.val}%;background:${r.clr}"></div>
+          </div>
+        </div>`).join('')}
+
+      ${context[d.name] ? `<div class="dp-context">📌 ${context[d.name]}</div>` : ''}
+
+      <button onclick="selectedName=null;buildGrid();document.getElementById('detail-panel').innerHTML=emptyPanel()"
+        style="margin-top:14px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:10px;width:100%">
+        ✕ Close Detail
+      </button>
+    </div>`;
+}
+
+function emptyPanel() {
+  return `<div class="dp-empty">
+    <div class="dp-empty-icon">📍</div>
+    <div class="dp-empty-text">CLICK A DISTRICT CARD<br>TO VIEW DETAILS</div>
+  </div>`;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  selectedName  = null;
+  document.querySelectorAll('[id^="f-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('f-'+(f==='ALL'?'all':f)).classList.add('active');
+  document.getElementById('detail-panel').innerHTML = emptyPanel();
+  buildGrid();
+}
+
+function setSort(s) {
+  currentSort = s;
+  document.querySelectorAll('[id^="s-"]').forEach(b=>b.classList.remove('active','blue'));
+  const btn = document.getElementById('s-'+s);
+  btn.classList.add('active','blue');
+  buildGrid();
+}
+
+// Init
+document.getElementById('detail-panel').innerHTML = emptyPanel();
+buildGrid();
+</script>
+</body>
+</html>

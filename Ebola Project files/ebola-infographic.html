@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ebola Data Explorer · Infographic</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:     #04070f; --card:   #0b1229; --card2:  #0d1530;
+      --border: #152040; --border2:#1e3060;
+      --orange: #f97316; --red:    #ef4444; --green:  #22c55e;
+      --cyan:   #22d3ee; --yellow: #fbbf24; --purple: #c084fc;
+      --blue:   #60a5fa; --text:   #e2e8f0; --mid:    #94a3b8; --muted:  #475569;
+      --mono: 'IBM Plex Mono', monospace;
+      --disp: 'Barlow Condensed', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #020508;
+      display: flex; justify-content: center;
+      padding: 40px 20px 60px;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* ── INFOGRAPHIC CONTAINER ── */
+    .ig {
+      width: 900px;
+      background: var(--bg);
+      background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 0L0 0 0 32' fill='none' stroke='%23091322' stroke-width='0.8'/%3E%3C/svg%3E");
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    .hdr {
+      background: linear-gradient(135deg, #060d20 0%, #08122a 40%, #050c1c 100%);
+      border-bottom: 1px solid var(--border2);
+      padding: 40px 44px 36px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hdr::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(249,115,22,.07), transparent);
+    }
+    .hdr::after {
+      content: '☣';
+      position: absolute; right: 44px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 90px; opacity: .05; color: var(--orange);
+      line-height: 1;
+    }
+    .hdr-eyebrow {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .22em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .hdr-title {
+      font-family: var(--disp); font-size: 58px; font-weight: 900;
+      letter-spacing: .02em; line-height: .92; color: var(--text);
+      margin-bottom: 12px;
+    }
+    .hdr-title span { color: var(--orange); }
+    .hdr-sub {
+      font-family: var(--disp); font-size: 22px; font-weight: 600;
+      color: var(--mid); letter-spacing: .04em; margin-bottom: 18px;
+    }
+    .hdr-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hdr-tag {
+      font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+      padding: 4px 12px; border-radius: 20px; border: 1px solid;
+    }
+
+    /* ── SECTION WRAPPER ── */
+    .section { padding: 32px 44px; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .sec-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sec-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── HERO STATS ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+    }
+    .stat {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 14px; text-align: center;
+    }
+    .stat-val {
+      font-family: var(--disp); font-size: 44px; font-weight: 900;
+      line-height: 1; letter-spacing: -.01em; margin-bottom: 6px;
+    }
+    .stat-lbl {
+      font-family: var(--mono); font-size: 8px; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .stat-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* ── EPIDEMIC CURVE ── */
+    .curve-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 20px 12px; position: relative;
+    }
+    .curve-title {
+      font-family: var(--disp); font-size: 15px; font-weight: 700;
+      color: var(--mid); margin-bottom: 10px;
+    }
+    #epi-svg { width: 100%; display: block; }
+    .curve-months {
+      display: flex; justify-content: space-between;
+      font-family: var(--mono); font-size: 8px; color: var(--muted);
+      margin-top: 6px; padding: 0 4px;
+    }
+
+    /* ── TOOLS GRID ── */
+    .tools-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .tool {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .tool-icon-wrap {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .tool-num {
+      font-family: var(--mono); font-size: 8px; letter-spacing: .1em;
+      color: var(--muted); margin-bottom: 3px;
+    }
+    .tool-name {
+      font-family: var(--disp); font-size: 18px; font-weight: 700;
+      color: var(--text); line-height: 1.1; margin-bottom: 4px;
+    }
+    .tool-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .tool-tag {
+      font-family: var(--mono); font-size: 8px; padding: 2px 7px;
+      border-radius: 3px; border: 1px solid var(--border); color: var(--muted);
+      margin-right: 4px;
+    }
+
+    /* ── COUNTRY BREAKDOWN ── */
+    .country-row { margin-bottom: 14px; }
+    .country-row:last-child { margin-bottom: 0; }
+    .country-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    .country-name {
+      font-family: var(--disp); font-size: 18px; font-weight: 700;
+      color: var(--text); display: flex; align-items: center; gap: 8px;
+    }
+    .country-nums {
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      text-align: right;
+    }
+    .bar-track {
+      height: 10px; background: var(--border); border-radius: 5px; overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 5px; }
+
+    /* ── TIMELINE ── */
+    .timeline { position: relative; padding: 8px 0 24px; }
+    .tl-line {
+      position: absolute; top: 20px; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--border) 0%, var(--border2) 40%, var(--green) 100%);
+    }
+    .tl-events { display: flex; justify-content: space-between; position: relative; }
+    .tl-event { display: flex; flex-direction: column; align-items: center; width: 90px; }
+    .tl-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid var(--bg); z-index: 1; margin-bottom: 8px; flex-shrink: 0;
+    }
+    .tl-date {
+      font-family: var(--mono); font-size: 7.5px; color: var(--muted);
+      letter-spacing: .06em; text-align: center; margin-bottom: 3px;
+    }
+    .tl-text {
+      font-size: 9.5px; color: var(--mid); text-align: center;
+      line-height: 1.4; font-weight: 500;
+    }
+
+    /* ── ARCHITECTURE ── */
+    .arch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .arch-pill {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 18px;
+      display: flex; align-items: center; gap: 10px; flex: 1; min-width: 180px;
+    }
+    .arch-icon { font-size: 22px; }
+    .arch-label {
+      font-family: var(--disp); font-size: 16px; font-weight: 700;
+      color: var(--text); margin-bottom: 2px;
+    }
+    .arch-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #060b18; padding: 18px 44px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid var(--border);
+    }
+    .footer-left { font-family: var(--mono); font-size: 8.5px; color: var(--muted); line-height: 1.7; }
+    .footer-right {
+      font-family: var(--mono); font-size: 9px; color: var(--muted);
+      text-align: right; line-height: 1.7;
+    }
+    .footer-right strong { color: var(--green); }
+  </style>
+</head>
+<body>
+<div class="ig">
+
+  <!-- ══ HEADER ══════════════════════════════════════════ -->
+  <div class="hdr">
+    <div class="hdr-eyebrow">West Africa · 2014–2016 · Interactive Data Tools</div>
+    <div class="hdr-title">EBOLA<br><span>DATA EXPLORER</span></div>
+    <div class="hdr-sub">Six Tools · One Outbreak · Zero Backend</div>
+    <div class="hdr-tags">
+      <span class="hdr-tag" style="color:var(--orange);border-color:rgba(249,115,22,.3)">6 Interactive Apps</span>
+      <span class="hdr-tag" style="color:var(--green);border-color:rgba(34,197,94,.3)">Client-Side Only</span>
+      <span class="hdr-tag" style="color:var(--cyan);border-color:rgba(34,211,238,.3)">Open Source · MIT</span>
+      <span class="hdr-tag" style="color:var(--muted);border-color:var(--border)">WHO · CDC · HDX Data</span>
+    </div>
+  </div>
+
+  <!-- ══ HERO STATS ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">Outbreak at a Glance · Final WHO Figures</div>
+    <div class="stats-row">
+      <div class="stat" style="border-top:2px solid var(--orange)">
+        <div class="stat-val" style="color:var(--orange)">28,616</div>
+        <div class="stat-lbl">Total Cases</div>
+        <div class="stat-sub">Confirmed + Probable</div>
+      </div>
+      <div class="stat" style="border-top:2px solid var(--red)">
+        <div class="stat-val" style="color:var(--red)">11,310</div>
+        <div class="stat-lbl">Total Deaths</div>
+        <div class="stat-sub">All Countries</div>
+      </div>
+      <div class="stat" style="border-top:2px solid var(--purple)">
+        <div class="stat-val" style="color:var(--purple)">39.5%</div>
+        <div class="stat-lbl">Case Fatality Rate</div>
+        <div class="stat-sub">Overall CFR</div>
+      </div>
+      <div class="stat" style="border-top:2px solid var(--yellow)">
+        <div class="stat-val" style="color:var(--yellow)">886</div>
+        <div class="stat-lbl">HCW Infections</div>
+        <div class="stat-sub">57.9% HCW CFR</div>
+      </div>
+      <div class="stat" style="border-top:2px solid var(--cyan)">
+        <div class="stat-val" style="color:var(--cyan)">10</div>
+        <div class="stat-lbl">Countries</div>
+        <div class="stat-sub">3 Epicenters</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ EPIDEMIC CURVE ══════════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">Monthly Epidemic Curve · New Cases · Mar 2014 – Mar 2016</div>
+    <div class="curve-wrap">
+      <div class="curve-title">Outbreak Trajectory — 25 Months of WHO Surveillance Data</div>
+      <svg id="epi-svg" viewBox="0 0 812 110" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+        <defs>
+          <linearGradient id="cGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#f97316" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#f97316" stop-opacity="0.02"/>
+          </linearGradient>
+          <filter id="glow2">
+            <feGaussianBlur stdDeviation="2.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Grid lines -->
+        <line x1="0" y1="102" x2="812" y2="102" stroke="#152040" stroke-width="0.8"/>
+        <line x1="0" y1="76"  x2="812" y2="76"  stroke="#0e1c35" stroke-width="0.5" stroke-dasharray="3,5"/>
+        <line x1="0" y1="50"  x2="812" y2="50"  stroke="#0e1c35" stroke-width="0.5" stroke-dasharray="3,5"/>
+        <line x1="0" y1="25"  x2="812" y2="25"  stroke="#0e1c35" stroke-width="0.5" stroke-dasharray="3,5"/>
+
+        <!-- Y-axis labels -->
+        <text x="812" y="106" fill="#2a3a5a" font-family="'IBM Plex Mono'" font-size="7" text-anchor="end">0</text>
+        <text x="812" y="80"  fill="#2a3a5a" font-family="'IBM Plex Mono'" font-size="7" text-anchor="end">~2.5k</text>
+        <text x="812" y="54"  fill="#2a3a5a" font-family="'IBM Plex Mono'" font-size="7" text-anchor="end">~5k</text>
+        <text x="812" y="29"  fill="#2a3a5a" font-family="'IBM Plex Mono'" font-size="7" text-anchor="end">~7.5k</text>
+
+        <!-- PHEIC reference line (frame 5 = Aug'14, x≈170) -->
+        <line x1="170" y1="0" x2="170" y2="102" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,4" opacity="0.6"/>
+        <text x="172" y="10" fill="#fbbf24" font-family="'IBM Plex Mono'" font-size="7.5" opacity="0.8">WHO PHEIC</text>
+
+        <!-- Area fill — drawn by JS -->
+        <path id="curve-area" fill="url(#cGrad)"/>
+        <!-- Curve line -->
+        <path id="curve-line" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linejoin="round"/>
+
+        <!-- Peak marker (x≈239) -->
+        <line x1="239" y1="2" x2="239" y2="102" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,4" opacity="0.5"/>
+        <circle cx="239" cy="7" r="4" fill="#ef4444" filter="url(#glow2)"/>
+        <text x="241" y="5" fill="#ef4444" font-family="'IBM Plex Mono'" font-size="8" font-weight="600">▲ PEAK 8,200+</text>
+        <text x="241" y="14" fill="#ef4444" font-family="'IBM Plex Mono'" font-size="7" opacity="0.8">October 2014</text>
+      </svg>
+      <div class="curve-months">
+        <span>Mar '14</span><span>Jun '14</span><span>Sep '14</span>
+        <span style="color:var(--red)">Oct '14 ▲</span>
+        <span>Jan '15</span><span>May '15</span><span>Sep '15</span>
+        <span>Jan '16</span><span>Mar '16</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SIX TOOLS ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">The Tools · Six Client-Side Interactive Applications</div>
+    <div class="tools-grid">
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(249,115,22,.12)">📊</div>
+        <div>
+          <div class="tool-num">01 / 06</div>
+          <div class="tool-name">Surveillance Dashboard</div>
+          <div class="tool-desc">WHO situation-room aesthetic. Animated KPI counters, epidemic curve toggle, country breakdown, district hotspot table, and key events timeline.</div>
+          <span class="tool-tag">React</span><span class="tool-tag">Recharts</span>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(34,197,94,.12)">📡</div>
+        <div>
+          <div class="tool-num">02 / 06</div>
+          <div class="tool-name">Outbreak Replay</div>
+          <div class="tool-desc">Animated month-by-month geographic map. Bubbles pulse and grow across West Africa as the epidemic spreads. Play / Pause / Scrub / Speed controls.</div>
+          <span class="tool-tag">SVG</span><span class="tool-tag">Vanilla JS</span>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(96,165,250,.12)">🔬</div>
+        <div>
+          <div class="tool-num">03 / 06</div>
+          <div class="tool-name">What If? Simulator</div>
+          <div class="tool-desc">Counterfactual epidemic curves. Three live sliders reshape the outbreak in real time — intervention timing, effectiveness, and baseline spread rate.</div>
+          <span class="tool-tag">Chart.js</span><span class="tool-tag">Live sliders</span>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(251,191,36,.12)">📍</div>
+        <div>
+          <div class="tool-num">04 / 06</div>
+          <div class="tool-name">District Profiler</div>
+          <div class="tool-desc">Filterable, sortable explorer of 15 sub-national districts. Click any card to open a detailed side panel with severity rating and CFR comparison.</div>
+          <span class="tool-tag">Vanilla JS</span><span class="tool-tag">Filter + Sort</span>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(192,132,252,.12)">🧮</div>
+        <div>
+          <div class="tool-num">05 / 06</div>
+          <div class="tool-name">CFR Calculator</div>
+          <div class="tool-desc">Enter any case/death count. Computes CFR with 95% Wilson Score CI and benchmarks it against 8 historical Ebola outbreaks from 1976–2022.</div>
+          <span class="tool-tag">Chart.js</span><span class="tool-tag">Wilson Score CI</span>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-icon-wrap" style="background:rgba(239,68,68,.12)">🏥</div>
+        <div>
+          <div class="tool-num">06 / 06</div>
+          <div class="tool-name">HCW Explorer</div>
+          <div class="tool-desc">Deep dive into 886 healthcare worker infections. HCW surge preceded the general population peak by 3 weeks. Country breakdown and context.</div>
+          <span class="tool-tag">Chart.js</span><span class="tool-tag">Dual view</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ COUNTRY BREAKDOWN ═══════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">Epicenter Breakdown · Cases by Country</div>
+    <div class="country-row">
+      <div class="country-top">
+        <div class="country-name">🇸🇱 Sierra Leone</div>
+        <div class="country-nums"><strong style="color:var(--orange);font-family:var(--mono)">14,124 cases</strong> &nbsp;·&nbsp; 3,956 deaths &nbsp;·&nbsp; 28.0% CFR</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:49.4%;background:var(--orange)"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-top:4px">49.4% of all cases</div>
+    </div>
+    <div class="country-row">
+      <div class="country-top">
+        <div class="country-name">🇱🇷 Liberia</div>
+        <div class="country-nums"><strong style="color:var(--purple);font-family:var(--mono)">10,678 cases</strong> &nbsp;·&nbsp; 4,810 deaths &nbsp;·&nbsp; 45.1% CFR</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:37.3%;background:var(--purple)"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-top:4px">37.3% of all cases</div>
+    </div>
+    <div class="country-row">
+      <div class="country-top">
+        <div class="country-name">🇬🇳 Guinea</div>
+        <div class="country-nums"><strong style="color:var(--red);font-family:var(--mono)">3,814 cases</strong> &nbsp;·&nbsp; 2,543 deaths &nbsp;·&nbsp; 66.7% CFR</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:13.3%;background:var(--red)"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--muted);margin-top:4px">13.3% of all cases · Highest CFR</div>
+    </div>
+  </div>
+
+  <!-- ══ KEY EVENTS TIMELINE ═════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">Key Milestones · Dec 2013 – Jun 2016</div>
+    <div class="timeline">
+      <div class="tl-line"></div>
+      <div class="tl-events">
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--muted)"></div>
+          <div class="tl-date">Dec 2013</div>
+          <div class="tl-text">Index case — Guéckédou, Guinea</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--yellow)"></div>
+          <div class="tl-date">Mar 2014</div>
+          <div class="tl-text">WHO officially notified</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--yellow);box-shadow:0 0 8px var(--yellow)"></div>
+          <div class="tl-date">Aug 8, 2014</div>
+          <div class="tl-text" style="color:var(--yellow);font-weight:600">⚠ WHO declares PHEIC</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--red);box-shadow:0 0 8px var(--red)"></div>
+          <div class="tl-date">Oct 2014</div>
+          <div class="tl-text" style="color:var(--red);font-weight:600">▲ Outbreak peaks 8,200+ cases</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--green)"></div>
+          <div class="tl-date">May 2015</div>
+          <div class="tl-text">✓ Liberia Ebola-free</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--green)"></div>
+          <div class="tl-date">Nov–Dec 2015</div>
+          <div class="tl-text">✓ SLE + Guinea Ebola-free</div>
+        </div>
+
+        <div class="tl-event">
+          <div class="tl-dot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)"></div>
+          <div class="tl-date">Jun 2016</div>
+          <div class="tl-text" style="color:var(--cyan);font-weight:600">🏁 WHO ends outbreak</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ARCHITECTURE ════════════════════════════════════ -->
+  <div class="section">
+    <div class="sec-label">Architecture · How It's Built</div>
+    <div class="arch-row">
+      <div class="arch-pill">
+        <div class="arch-icon">📄</div>
+        <div>
+          <div class="arch-label">Single HTML Files</div>
+          <div class="arch-sub">Each tool is one self-contained file</div>
+        </div>
+      </div>
+      <div class="arch-pill">
+        <div class="arch-icon">🔌</div>
+        <div>
+          <div class="arch-label">Zero Backend</div>
+          <div class="arch-sub">No server · No API · No database</div>
+        </div>
+      </div>
+      <div class="arch-pill">
+        <div class="arch-icon">📦</div>
+        <div>
+          <div class="arch-label">Data Embedded</div>
+          <div class="arch-sub">All WHO/CDC data as JS constants</div>
+        </div>
+      </div>
+      <div class="arch-pill">
+        <div class="arch-icon">⚡</div>
+        <div>
+          <div class="arch-label">Works Offline</div>
+          <div class="arch-sub">Clone once · Open · Runs forever</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DOCS NOTE ═══════════════════════════════════════ -->
+  <div class="section" style="background:rgba(34,197,94,.02)">
+    <div class="sec-label">Also Included</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">📖</div>
+        <div style="font-family:var(--disp);font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">Documentation Manual</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">Full Markdown style guide — headings, voice, code blocks, API docs, ADR templates, CI linting</div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">🗂️</div>
+        <div style="font-family:var(--disp);font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">GitHub Repo Package</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">README · CHANGELOG · LICENSE · CONTRIBUTING · PR templates · Issue templates · CODEOWNERS</div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">🗃️</div>
+        <div style="font-family:var(--disp);font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">Shared Data Module</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">ebola-data.js — all datasets in one universal JS module, works in browser and Node.js</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ══════════════════════════════════════════ -->
+  <div class="footer">
+    <div class="footer-left">
+      <strong style="color:var(--mid)">Data Sources:</strong> WHO Ebola Situation Reports · CDC MMWR · Humanitarian Data Exchange (HDX) · NEJM 2014–2015<br>
+      Monthly distributions are approximate for visualization. Totals match WHO final report (28,616 cases · 11,310 deaths).
+    </div>
+    <div class="footer-right">
+      <strong>MIT License · Open Source</strong><br>
+      Client-side only · No backend required<br>
+      Built with Claude · Anthropic 2025
+    </div>
+  </div>
+
+</div><!-- /ig -->
+
+<script>
+  // Draw epidemic curve dynamically
+  const MCASES = [55,155,200,380,690,1680,3400,8200,4000,3500,1850,1400,980,680,480,320,195,130,95,75,60,48,32,18,8];
+  const W = 812, H = 102, PAD_TOP = 4;
+  const maxV = 8200;
+  const step = W / (MCASES.length - 1);
+
+  const pts = MCASES.map((v, i) => ({
+    x: i * step,
+    y: H - (v / maxV) * (H - PAD_TOP),
+  }));
+
+  const ptsStr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ');
+
+  document.getElementById('curve-area').setAttribute('d',
+    `M0,${H} L${ptsStr} L${W},${H} Z`
+  );
+  document.getElementById('curve-line').setAttribute('d',
+    `M${ptsStr}`
+  );
+</script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign EpiFlow: Real-Time Syndromic Surveillance Terminal</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-alert: #ef4444;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        header h1 { 
+            font-size: 1.75rem; 
+            color: var(--accent-blue); 
+            letter-spacing: -0.02em;
+        }
+        
+        header p { 
+            color: var(--text-muted); 
+            font-size: 0.9rem; 
+            margin-top: 0.25rem; 
+        }
+
+        .version-tag {
+            background-color: var(--border-color);
+            color: var(--text-main);
+            font-family: monospace;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1.5rem;
+        }
+
+        .panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel h2 { 
+            font-size: 1.1rem; 
+            margin-bottom: 1rem; 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-main);
+        }
+
+        .instructions {
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            margin-bottom: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 280px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-main);
+            padding: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            margin-bottom: 1rem;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .btn {
+            color: var(--bg-primary);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.15s ease;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+        }
+
+        .btn-primary:hover {
+            background-color: #7dd3fc;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            margin-top: 0.75rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            transition: all 0.20s ease;
+        }
+
+        .stat-card.alert { 
+            border-color: var(--accent-alert); 
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+        }
+        
+        .stat-card.alert .z-score { 
+            color: var(--accent-alert); 
+        }
+
+        .stat-label { 
+            font-size: 0.75rem; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+        }
+        
+        .stat-count { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            margin: 0.1rem 0; 
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .z-score { 
+            font-size: 0.85rem; 
+            color: var(--accent-success); 
+            font-weight: 600; 
+            font-family: monospace;
+        }
+
+        .log-table-wrapper {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th, td { 
+            padding: 0.75rem; 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        
+        th { 
+            background-color: #0b0f19; 
+            color: var(--text-muted); 
+            position: sticky; 
+            top: 0; 
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            z-index: 10;
+        }
+
+        tr:hover td {
+            background-color: rgba(51, 65, 85, 0.2);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-family: monospace;
+        }
+        
+        .badge.ili { background-color: rgba(56, 189, 248, 0.15); color: var(--accent-blue); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .badge.gi { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge.neu { background-color: rgba(245, 158, 11, 0.15); color: var(--accent-warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge.unc { background-color: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3); }
+
+        td code {
+            font-family: monospace;
+            background-color: var(--bg-secondary);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Sovereign EpiFlow Terminal</h1>
+            <p>Real-Time Decentralized Syndromic Surveillance Pipeline Engine // IEEE 29148 Standard Core Build</p>
+        </div>
+        <div class="version-tag">v1.0.0-CUMULATIVE</div>
+    </header>
+
+    <div class="layout-grid">
+        <div class="panel">
+            <h2>Data Ingestion Terminal</h2>
+            <p class="instructions">
+                Paste row-delimited epidemiological transaction records directly into the memory buffer. Format must strictly align to layout configuration constraints:<br>
+                <code>Hash_ID, YYYY-MM-DDTHH:MM, Chief Complaint Narrative Text</code>
+            </p>
+            <textarea id="csvInput" placeholder="rec_001,2026-05-30T12:00,high fever with painful tracking cough and body aches&#10;rec_002,2026-05-30T12:04,severe vomiting and constant nausea over 12 hours&#10;rec_003,2026-05-30T12:15,patient exhibits sudden onset of confusion and altered mental status&#10;rec_004,2026-05-30T12:22,broken arm from falls on ice surface no other symptoms"></textarea>
+            
+            <button class="btn btn-primary" onclick="executeIngestionPipeline()">Execute Pipeline Stream</button>
+            <button class="btn btn-secondary" onclick="seedHistoricalStatisticalBaseline()">Seed Historical 28-Day Baseline Matrix</button>
+        </div>
+
+        <div>
+            <div class="panel" style="margin-bottom: 1.5rem;">
+                <h2>Epidemiological Signal Matrix (Surveillance Panel)</h2>
+                <div class="stats-container">
+                    <div class="stat-card" id="card-ili">
+                        <div class="stat-label">Influenza-Like Illness (ILI)</div>
+                        <div class="stat-count" id="count-ili">0</div>
+                        <div class="z-score" id="z-ili">Z-Score: 0.00</div>
+                    </div>
+                    <div class="stat-card" id="card-gi">
+                        <div class="stat-label">Gastrointestinal (GI)</div>
+                        <div class="stat-count" id="count-gi">0</div>
+                        <div class="z-score" id="z-gi">Z-Score: 0.00</div>
+                    </div>
+                    <div class="stat-card" id="card-neu">
+                        <div class="stat-label">Neurological / AMS</div>
+                        <div class="stat-count" id="count-neu">0</div>
+                        <div class="z-score" id="z-neu">Z-Score: 0.00</div>
+                    </div>
+                    <div class="stat-card" id="card-unc">
+                        <div class="stat-label">General / Unclassified</div>
+                        <div class="stat-count" id="count-unc">0</div>
+                        <div class="z-score" style="color: var(--text-muted);">Dynamic Control Baseline</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Real-Time Classification Protocol Evaluation Ledger</h2>
+                <div class="log-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Entity Hash ID</th>
+                                <th>Timestamp Granularity</th>
+                                <th>Normalized Text Field Payload</th>
+                                <th>Assigned Syndrome Taxonomy</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgerBody">
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                                    Awaiting real-time ingestion stream registration indicators...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Compiled Fixed RegEx Classification Matrix Array
+        const STANDALONE_REGEX_MATRIX = {
+            ili: [
+                /\b(fever|fvr|fev|high\s+temp(erature)?)\b.*\b(cough|cgh|sore\s+throat|srt\s+thrt)\b/i,
+                /\b(cough|cgh|sore\s+throat|srt\s+thrt)\b.*\b(fever|fvr|fev|high\s+temp(erature)?)\b/i,
+                /\b(ili|flu|influenza|chills|body\s+aches)\b/i
+            ],
+            gastrointestinal: [
+                /\b(nausea|nv|vomit(ing)?|vmt|diarrhea|drha|diarea|stomach\s+flu|gastroenteritis)\b/i,
+                /\b(abd(ominal)?\s+cramps|stomach\s+ache|gi\s+upset)\b/i
+            ],
+            neurological: [
+                /\b(seizure|sz|altered\s+mental|ams|confusion|syncope|faint(ed|ing)?|lethargy)\b/i
+            ]
+        };
+
+        // Localized Volatile Memory Cache representing baseline population statistical distributions
+        let baselineStatisticalParameters = {
+            ili: { mean: 0.05, stdDev: 0.015 },
+            gastrointestinal: { mean: 0.08, stdDev: 0.02 },
+            neurological: { mean: 0.02, stdDev: 0.008 }
+        };
+
+        let currentPipelineCounts = { ili: 0, gastrointestinal: 0, neurological: 0, unclassified: 0 };
+        let totalRecordsProcessed = 0;
+
+        function applyTextSanitizationFilter(text) {
+            if (!text) return "";
+            // Cast text strings to standard uniform character set, drop special symbols
+            return text.toLowerCase()
+                       .replace(/[^a-z0-9\s]/g, ' ')
+                       .replace(/\s+/g, ' ')
+                       .trim();
+        }
+
+        function executePriorityTriageRouting(normalizedText) {
+            // Strict top-down deterministic priority parsing hierarchy block
+            if (STANDALONE_REGEX_MATRIX.ili.some(pattern => pattern.test(normalizedText))) {
+                return "ili";
+            }
+            if (STANDALONE_REGEX_MATRIX.neurological.some(pattern => pattern.test(normalizedText))) {
+                return "neurological";
+            }
+            if (STANDALONE_REGEX_MATRIX.gastrointestinal.some(pattern => pattern.test(normalizedText))) {
+                return "gastrointestinal";
+            }
+            return "unclassified";
+        }
+
+        function computeModifiedZScoreMetric(syndrome, activeProportion) {
+            const parameters = baselineStatisticalParameters[syndrome];
+            if (!parameters || parameters.stdDev === 0) return 0;
+            return (activeProportion - parameters.mean) / parameters.stdDev;
+        }
+
+        function executeIngestionPipeline() {
+            const inputPayload = document.getElementById("csvInput").value.trim();
+            if (!inputPayload) return;
+
+            const transactions = inputPayload.split("\n");
+            const uiLedgerBody = document.getElementById("ledgerBody");
+            
+            if (totalRecordsProcessed === 0) {
+                uiLedgerBody.innerHTML = "";
+            }
+
+            transactions.forEach(recordRow => {
+                const vectorFields = recordRow.split(",");
+                if (vectorFields.length < 3) return;
+
+                const hashId = vectorFields[0].trim();
+                const timestampIso = vectorFields[1].trim();
+                const unstructuredComplaint = vectorFields.slice(2).join(",");
+
+                const standardizedText = applyTextSanitizationFilter(unstructuredComplaint);
+                const assignedTaxonomyClass = executePriorityTriageRouting(standardizedText);
+
+                // Increment categorical aggregate calculation metrics
+                currentPipelineCounts[assignedTaxonomyClass]++;
+                totalRecordsProcessed++;
+
+                // Build structural table layout modifications statelessly
+                const htmlRow = document.createElement("tr");
+                let categoricalBadgeMarkup = "";
+
+                switch(assignedTaxonomyClass) {
+                    case 'ili':
+                        categoricalBadgeMarkup = '<span class="badge ili">ILI</span>';
+                        break;
+                    case 'gastrointestinal':
+                        categoricalBadgeMarkup = '<span class="badge gi">GI</span>';
+                        break;
+                    case 'neurological':
+                        categoricalBadgeMarkup = '<span class="badge neu">NEURO</span>';
+                        break;
+                    default:
+                        categoricalBadgeMarkup = '<span class="badge unc">UNC</span>';
+                }
+
+                htmlRow.innerHTML = `
+                    <td><code>${hashId}</code></td>
+                    <td>${timestampIso}</td>
+                    <td>${standardizedText}</td>
+                    <td>${categoricalBadgeMarkup}</td>
+                `;
+                uiLedgerBody.appendChild(htmlRow);
+            });
+
+            recalculateAndRenderDashboard();
+        }
+
+        function recalculateAndRenderDashboard() {
+            // Document numerical outputs changes over active interface
+            document.getElementById("count-ili").innerText = currentPipelineCounts.ili;
+            document.getElementById("count-gi").innerText = currentPipelineCounts.gastrointestinal;
+            document.getElementById("count-neu").innerText = currentPipelineCounts.neurological;
+            document.getElementById("count-unc").innerText = currentPipelineCounts.unclassified;
+
+            const targets = ['ili', 'gastrointestinal', 'neurological'];
+            targets.forEach(syndromeKey => {
+                const statisticalProportion = totalRecordsProcessed > 0 ? (currentPipelineCounts[syndromeKey] / totalRecordsProcessed) : 0;
+                const derivedZScoreValue = computeModifiedZScoreMetric(syndromeKey, statisticalProportion);
+                
+                const domPrefix = syndromeKey === 'gastrointestinal' ? 'gi' : syndromeKey === 'neurological' ? 'neu' : 'ili';
+                const outputFieldElement = document.getElementById(`z-${domPrefix}`);
+                const visualizationCardContainer = document.getElementById(`card-${domPrefix}`);
+
+                outputFieldElement.innerText = `Z-Score: ${derivedZScoreValue.toFixed(2)}`;
+
+                // Strict Threshold Activation Boundary Rule evaluation
+                if (derivedZScoreValue >= 3.0) {
+                    visualizationCardContainer.classList.add("alert");
+                    outputFieldElement.innerText += " [SIGNAL ALERT]";
+                } else {
+                    visualizationCardContainer.classList.remove("alert");
+                }
+            });
+        }
+
+        function seedHistoricalStatisticalBaseline() {
+            // Re-parameterizes tracking vectors to model calibrated population baselines
+            baselineStatisticalParameters = {
+                ili: { mean: 0.015, stdDev: 0.004 },
+                gastrointestinal: { mean: 0.025, stdDev: 0.006 },
+                neurological: { mean: 0.008, stdDev: 0.002 }
+            };
+            alert("Sovereign execution space baseline values re-seeded with strict historical variance constants.");
+            recalculateAndRenderDashboard();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What If? Simulator · Ebola Data Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#04070f;--surface:#080d1e;--card:#0b1229;--border:#152040;--border-hi:#1e3060;
+      --orange:#f97316;--red:#ef4444;--green:#22c55e;--cyan:#22d3ee;--yellow:#fbbf24;
+      --blue:#60a5fa;--purple:#c084fc;--text:#e2e8f0;--mid:#94a3b8;--muted:#475569;
+      --mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+    ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+    @keyframes fade-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .hd{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:.05em;}
+    .hd-back{font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:5px 12px;border-radius:6px;}
+    .hd-back:hover{color:var(--text);border-color:var(--border-hi);}
+
+    main{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:16px;}
+
+    .page-header{animation:fade-up .4s ease both;}
+    .page-label{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+    .page-title{font-family:var(--display);font-size:28px;font-weight:900;color:var(--text);margin-bottom:4px;}
+    .page-desc{font-size:13px;color:var(--mid);line-height:1.6;max-width:640px;}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;}
+    .card-pad{padding:20px;}
+    .clabel{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+    .ctitle{font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);margin-bottom:14px;}
+
+    .top-grid{display:grid;grid-template-columns:1fr 280px;gap:16px;animation:fade-up .4s ease .05s both;}
+    .impact-grid{display:flex;flex-direction:column;gap:10px;}
+    .impact-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+    .impact-val{font-family:var(--display);font-size:30px;font-weight:900;line-height:1;margin:4px 0;}
+    .impact-sub{font-size:11px;color:var(--muted);}
+
+    .chart-wrap{height:240px;position:relative;}
+
+    .sliders-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;animation:fade-up .4s ease .1s both;}
+    .slider-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+    .slider-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+    .slider-name{font-size:13px;color:var(--text);font-weight:500;}
+    .slider-val{font-family:var(--mono);font-size:15px;font-weight:700;}
+    .slider-hint{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+    input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;cursor:pointer;outline:none;background:var(--border);}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--bg);cursor:pointer;}
+
+    .legend-row{display:flex;gap:20px;margin-top:10px;flex-wrap:wrap;}
+    .leg{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9px;color:var(--muted);}
+    .leg-line{width:22px;height:2px;}
+    .leg-dashed{background:none;border-top:2px dashed;}
+
+    .note{background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:14px 18px;font-size:12px;color:var(--mid);line-height:1.7;animation:fade-up .4s ease .15s both;}
+    .note strong{color:var(--yellow);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;}
+
+    footer{border-top:1px solid var(--border);padding:10px 28px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--muted);}
+    .ft-link{color:var(--muted);text-decoration:none;} .ft-link:hover{color:var(--mid);}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hd">🔬 WHAT IF? SIMULATOR</div>
+  <a class="hd-back" href="../index.html">← Hub</a>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="page-label">Tool 03 / 06 · Counterfactual Analysis</div>
+    <div class="page-title">What If? Intervention Simulator</div>
+    <div class="page-desc">Drag the three sliders to generate a counterfactual epidemic curve. Adjust when the response kicks in, how effective it is, and the baseline spread rate — then see estimated cases and deaths prevented or added.</div>
+  </div>
+
+  <div class="top-grid">
+    <!-- Chart -->
+    <div class="card card-pad">
+      <div class="clabel">WHO Data vs. Simulated Scenario</div>
+      <div class="ctitle">Monthly New Cases — Actual vs. Simulated</div>
+      <div class="chart-wrap"><canvas id="sim-chart"></canvas></div>
+      <div class="legend-row">
+        <div class="leg"><div class="leg-line" style="background:var(--orange)"></div>Actual Outbreak</div>
+        <div class="leg"><div class="leg-line leg-dashed" style="border-color:var(--blue)"></div>Simulated Scenario</div>
+        <div class="leg"><div class="leg-line leg-dashed" style="border-color:var(--yellow);opacity:.6"></div>Intervention Point</div>
+      </div>
+    </div>
+
+    <!-- Impact stats -->
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="clabel">Simulated Total Cases</div>
+        <div class="impact-val" id="sim-total" style="color:var(--blue)">—</div>
+        <div class="impact-sub">vs. 28,645 actual</div>
+      </div>
+      <div class="impact-card">
+        <div class="clabel">Cases Compared</div>
+        <div class="impact-val" id="case-delta" style="font-size:22px">—</div>
+        <div class="impact-sub">relative to actual outbreak</div>
+      </div>
+      <div class="impact-card">
+        <div class="clabel">Deaths Compared</div>
+        <div class="impact-val" id="death-delta" style="font-size:22px">—</div>
+        <div class="impact-sub">at 39.5% estimated CFR</div>
+      </div>
+      <div class="impact-card">
+        <div class="clabel">Intervention Month</div>
+        <div class="impact-val" id="int-month-display" style="color:var(--yellow);font-size:22px">Aug '14</div>
+        <div class="impact-sub">WHO PHEIC: Aug 8, 2014</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sliders -->
+  <div class="sliders-grid">
+    <div class="slider-card">
+      <div class="slider-top">
+        <span class="slider-name">Intervention Month</span>
+        <span class="slider-val" id="val-int" style="color:var(--yellow)">Aug '14</span>
+      </div>
+      <div class="slider-hint">When does coordinated international response begin? Earlier = fewer cases.</div>
+      <input type="range" id="slider-int" min="1" max="12" value="5" step="1"
+             style="accent-color:var(--yellow)" oninput="updateSim()">
+    </div>
+    <div class="slider-card">
+      <div class="slider-top">
+        <span class="slider-name">Response Effectiveness</span>
+        <span class="slider-val" id="val-eff" style="color:var(--green)">60%</span>
+      </div>
+      <div class="slider-hint">How effectively does the intervention reduce transmission after the trigger point?</div>
+      <input type="range" id="slider-eff" min="10" max="90" value="60" step="5"
+             style="accent-color:var(--green)" oninput="updateSim()">
+    </div>
+    <div class="slider-card">
+      <div class="slider-top">
+        <span class="slider-name">Initial Spread Rate</span>
+        <span class="slider-val" id="val-sp" style="color:var(--red)">1.0×</span>
+      </div>
+      <div class="slider-hint">Relative transmission intensity before intervention. 1.0× = actual outbreak baseline.</div>
+      <input type="range" id="slider-sp" min="5" max="25" value="10" step="1"
+             style="accent-color:var(--red)" oninput="updateSim()">
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>⚠ MODEL NOTE · </strong>
+    This is a simplified proportional counterfactual model for educational purposes. It modifies the actual
+    WHO epidemic curve based on the selected parameters using compounding decay after the intervention point.
+    It does not constitute a validated SEIR epidemiological model and should not be used for policy decisions.
+    Real outbreak modelling accounts for incubation periods, heterogeneous mixing, geographic barriers,
+    healthcare capacity constraints, and stochastic effects.
+  </div>
+</main>
+
+<footer>
+  <span>SOURCES: WHO EBOLA SITUATION REPORTS · CDC MMWR · DATA APPROXIMATE — EDUCATIONAL USE</span>
+  <div><a class="ft-link" href="../index.html">← Back to Hub</a></div>
+</footer>
+
+<script>
+const MONTHS = [
+  "Mar '14","Apr '14","May '14","Jun '14","Jul '14",
+  "Aug '14","Sep '14","Oct '14","Nov '14","Dec '14",
+  "Jan '15","Feb '15","Mar '15","Apr '15","May '15",
+  "Jun '15","Jul '15","Aug '15","Sep '15","Oct '15",
+  "Nov '15","Dec '15","Jan '16","Feb '16","Mar '16",
+];
+const MCASES = [55,155,200,380,690,1680,3400,8200,4000,3500,1850,1400,980,680,480,320,195,130,95,75,60,48,32,18,8];
+const ACTUAL_TOTAL = MCASES.reduce((a,b)=>a+b,0);
+const $ = id => document.getElementById(id);
+
+// Chart.js global defaults
+Chart.defaults.color = '#475569';
+Chart.defaults.borderColor = '#152040';
+
+// Reference line plugin
+const refLinePlugin = {
+  id:'refLine',
+  afterDraw(chart, args, opts) {
+    const {ctx, chartArea:{left,right,top,bottom}, scales:{x}} = chart;
+    const idx = opts.index;
+    if (idx == null) return;
+    const xPos = x.getPixelForValue(idx);
+    ctx.save();
+    ctx.setLineDash([5,5]);
+    ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(xPos, top);
+    ctx.lineTo(xPos, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+Chart.register(refLinePlugin);
+
+// Init chart
+const ctx = $('sim-chart').getContext('2d');
+const simChart = new Chart(ctx, {
+  type:'line',
+  data:{
+    labels: MONTHS,
+    datasets:[
+      {
+        label:'Actual Outbreak',
+        data: MCASES,
+        borderColor:'#f97316', backgroundColor:'rgba(249,115,22,0.12)',
+        fill:true, tension:0.4, borderWidth:2.5,
+        pointRadius:2, pointHoverRadius:5,
+      },
+      {
+        label:'Simulated Scenario',
+        data: MCASES.slice(),
+        borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)',
+        fill:true, tension:0.4, borderWidth:2,
+        borderDash:[6,4], pointRadius:2, pointHoverRadius:5,
+      },
+    ],
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#0b1229', borderColor:'#152040', borderWidth:1,
+        titleColor:'#94a3b8', bodyColor:'#e2e8f0',
+        titleFont:{family:"'IBM Plex Mono'",size:10},
+        bodyFont:{family:"'IBM Plex Mono'",size:11},
+        padding:12,
+      },
+      refLine:{index:5},
+    },
+    scales:{
+      x:{grid:{color:'#152040'}, ticks:{color:'#475569',font:{family:"'IBM Plex Mono'",size:8.5},maxRotation:40}},
+      y:{grid:{color:'#152040'}, beginAtZero:true,
+         ticks:{color:'#475569',font:{family:"'IBM Plex Mono'",size:8.5},
+                callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}},
+    },
+  },
+});
+
+function updateSim() {
+  const intIdx  = parseInt($('slider-int').value);
+  const eff     = parseInt($('slider-eff').value) / 100;
+  const spread  = parseInt($('slider-sp').value) / 10;
+  const month   = MONTHS[intIdx];
+
+  // Update labels
+  $('val-int').textContent = month;
+  $('val-eff').textContent = Math.round(eff*100)+'%';
+  $('val-sp').textContent  = spread.toFixed(1)+'×';
+  $('int-month-display').textContent = month;
+
+  // Simulate curve
+  const simData = MCASES.map((base,i) => {
+    if (i < intIdx) return Math.round(base * spread);
+    const mAfter = i - intIdx;
+    const decay  = Math.pow(1 - eff * 0.5, mAfter);
+    return Math.round(base * spread * Math.max(0.03, decay));
+  });
+
+  const simTotal  = simData.reduce((a,b)=>a+b,0);
+  const caseDelta = ACTUAL_TOTAL - simTotal;
+  const deathDelta= Math.round(caseDelta * 0.395);
+
+  $('sim-total').textContent = simTotal.toLocaleString();
+
+  const fmt = (d, unit) => {
+    const sign = d >= 0 ? '▼ ' : '▲ ';
+    const clr  = d >= 0 ? 'var(--green)' : 'var(--red)';
+    const lbl  = d >= 0 ? unit+' fewer' : unit+' more';
+    return `<span style="color:${clr}">${sign}${Math.abs(d).toLocaleString()}</span> <span style="font-size:12px;color:var(--muted)">${lbl}</span>`;
+  };
+  $('case-delta').innerHTML  = fmt(caseDelta,  'cases');
+  $('death-delta').innerHTML = fmt(deathDelta, 'deaths');
+
+  // Update chart
+  simChart.data.datasets[1].data = simData;
+  simChart.options.plugins.refLine.index = intIdx;
+  simChart.update('active');
+}
+
+updateSim();
+</script>
+</body>
+</html>

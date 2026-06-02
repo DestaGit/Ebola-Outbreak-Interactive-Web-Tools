@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CFR Calculator · Ebola Data Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:      #04070f; --surface: #080d1e; --card:   #0b1229;
+      --card2:   #0d1530; --border: #152040;  --border-hi: #1e3060;
+      --orange:  #f97316; --red:    #ef4444;  --green:  #22c55e;
+      --cyan:    #22d3ee; --yellow: #fbbf24;  --purple: #c084fc;
+      --blue:    #60a5fa; --text:   #e2e8f0;  --mid:    #94a3b8;
+      --muted:   #475569;
+      --mono:    'IBM Plex Mono', 'Courier New', monospace;
+      --display: 'Barlow Condensed', system-ui, sans-serif;
+    }
+
+    /* ── RESET ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 0L0 0 0 32' fill='none' stroke='%230a1428' stroke-width='0.6'/%3E%3C/svg%3E");
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @keyframes fade-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes blink   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 28px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 200;
+      flex-shrink: 0;
+    }
+    .hd-brand { display: flex; align-items: center; gap: 12px; }
+    .hd-pill  {
+      background: rgba(192,132,252,.08); border: 1px solid rgba(192,132,252,.3);
+      border-radius: 20px; padding: 3px 12px;
+      font-family: var(--mono); font-size: 9px; color: var(--purple);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .hd-pill-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
+    .hd-title { font-family: var(--display); font-size: 20px; font-weight: 900; letter-spacing: .05em; }
+    .hd-sub   { font-family: var(--mono); font-size: 8.5px; letter-spacing: .13em; color: var(--muted); margin-top: 2px; }
+    .hd-back  {
+      font-family: var(--mono); font-size: 9px; color: var(--muted);
+      text-decoration: none; border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 12px; transition: all .15s;
+    }
+    .hd-back:hover { color: var(--text); border-color: var(--border-hi); }
+
+    /* ── MAIN LAYOUT ────────────────────────────────────── */
+    main { flex: 1; padding: 18px 28px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── CARDS ──────────────────────────────────────────── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .card-head {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between;
+    }
+    .card-body { padding: 20px; }
+    .kicker { font-family: var(--mono); font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .ctitle { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--text); }
+
+    /* ── KPI ROW ────────────────────────────────────────── */
+    .kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; animation: fade-up .4s ease both; }
+    .kpi-val { font-family: var(--display); font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -.01em; margin: 3px 0 6px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    /* ── RESULT BADGE ───────────────────────────────────── */
+    .result-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid; border-radius: 8px; padding: 6px 14px;
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      letter-spacing: .06em; margin-top: 10px;
+    }
+    .result-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* ── INPUT GRID ─────────────────────────────────────── */
+    .main-grid { display: grid; grid-template-columns: 400px 1fr; gap: 14px; }
+
+    /* ── RANGE SLIDER ───────────────────────────────────── */
+    .input-group { margin-bottom: 20px; }
+    .input-group:last-of-type { margin-bottom: 0; }
+    .input-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .input-name  { font-size: 13px; color: var(--text); font-weight: 500; }
+    .input-val   { font-family: var(--mono); font-size: 15px; font-weight: 700; }
+    input[type=range] {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 5px; background: var(--border); border-radius: 3px;
+      cursor: pointer; outline: none; margin-bottom: 8px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 17px; height: 17px;
+      border-radius: 50%; border: 2px solid var(--bg); cursor: pointer;
+    }
+    .num-input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 12px; color: var(--text);
+      font-family: var(--mono); font-size: 13px; outline: none;
+      transition: border-color .15s;
+    }
+    .num-input:focus { border-color: var(--border-hi); }
+    .input-hint { font-size: 10.5px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+    /* ── CI BAR ─────────────────────────────────────────── */
+    .ci-section { margin-top: 24px; }
+    .ci-label-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .ci-label { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+    .ci-track {
+      position: relative; height: 20px; background: var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .ci-fill {
+      position: absolute; top: 0; height: 100%;
+      transition: left .4s ease, width .4s ease;
+      border-radius: 10px; opacity: .5;
+    }
+    .ci-estimate {
+      position: absolute; top: 0; bottom: 0; width: 3px;
+      border-radius: 2px; transition: left .4s ease;
+    }
+    .ci-pct-row {
+      display: flex; justify-content: space-between;
+      margin-top: 6px;
+    }
+    .ci-pct { font-family: var(--mono); font-size: 10px; }
+    .ci-bounds-row {
+      display: flex; justify-content: space-between; margin-top: 14px;
+      border-top: 1px solid var(--border); padding-top: 14px;
+    }
+    .ci-bound { text-align: center; }
+    .ci-bound-lbl { font-family: var(--mono); font-size: 8px; color: var(--muted); margin-bottom: 3px; }
+    .ci-bound-val { font-family: var(--display); font-size: 24px; font-weight: 900; }
+
+    /* ── CHART AREA ─────────────────────────────────────── */
+    .canvas-wrap { position: relative; height: 360px; }
+
+    /* ── CONTEXT NOTE ───────────────────────────────────── */
+    .note {
+      background: rgba(251,191,36,.04); border: 1px solid rgba(251,191,36,.2);
+      border-radius: 10px; padding: 14px 18px;
+      font-size: 12px; color: var(--mid); line-height: 1.7;
+    }
+    .note strong { color: var(--yellow); font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; }
+
+    /* ── FOOTER ─────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); padding: 10px 28px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--mono); font-size: 8px; color: var(--muted); flex-wrap: wrap; gap: 6px;
+      flex-shrink: 0;
+    }
+    .ft-link { color: var(--muted); text-decoration: none; }
+    .ft-link:hover { color: var(--mid); }
+
+    /* ── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .kpi-row   { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 500px) {
+      .kpi-row { grid-template-columns: 1fr; }
+      .kpi-val { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────── -->
+<header>
+  <div class="hd-brand">
+    <div class="hd-pill">
+      <div class="hd-pill-dot"></div>
+      TOOL 05 / 06
+    </div>
+    <div>
+      <div class="hd-title">🧮 CFR CALCULATOR</div>
+      <div class="hd-sub">Case Fatality Rate · Wilson Score CI · Historical Benchmarker</div>
+    </div>
+  </div>
+  <a class="hd-back" href="../index.html">← Hub</a>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────── -->
+<main>
+
+  <!-- PAGE INTRO -->
+  <div style="animation:fade-up .4s ease both">
+    <div class="kicker">Tool 05 / 06 · Epidemiological Calculator</div>
+    <div style="font-family:var(--display);font-size:26px;font-weight:900;color:var(--text);margin-bottom:4px">
+      CFR Calculator &amp; Historical Comparator
+    </div>
+    <div style="font-size:13px;color:var(--mid);max-width:680px;line-height:1.6">
+      Enter any case and death count to compute the Case Fatality Rate with a 95% Wilson Score
+      confidence interval. Your result is automatically benchmarked against eight historical
+      Ebola outbreaks from 1976 to 2022.
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi" style="animation-delay:.05s;border-top:2px solid var(--purple)">
+      <div class="kicker">Calculated CFR</div>
+      <div class="kpi-val" id="kv-cfr" style="color:var(--purple)">—</div>
+      <div class="kpi-sub">Case fatality rate</div>
+    </div>
+    <div class="kpi" style="animation-delay:.1s;border-top:2px solid var(--green)">
+      <div class="kicker">Lower 95% CI</div>
+      <div class="kpi-val" id="kv-lo" style="color:var(--green);font-size:36px">—</div>
+      <div class="kpi-sub">Wilson Score bound</div>
+    </div>
+    <div class="kpi" style="animation-delay:.15s;border-top:2px solid var(--red)">
+      <div class="kicker">Upper 95% CI</div>
+      <div class="kpi-val" id="kv-hi" style="color:var(--red);font-size:36px">—</div>
+      <div class="kpi-sub">Wilson Score bound</div>
+    </div>
+    <div class="kpi" style="animation-delay:.2s;border-top:2px solid var(--yellow)">
+      <div class="kicker">Severity Category</div>
+      <div class="kpi-val" id="kv-cat" style="font-size:26px;margin-top:8px">—</div>
+      <div class="kpi-sub" id="kv-cat-sub">relative to historical outbreaks</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: INPUTS + CI VIZ -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Input card -->
+      <div class="card" style="animation:fade-up .4s ease .2s both">
+        <div class="card-head">
+          <div>
+            <div class="kicker">Input Parameters</div>
+            <div class="ctitle">Enter Case &amp; Death Count</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <!-- Cases -->
+          <div class="input-group">
+            <div class="input-label">
+              <span class="input-name">Total Cases <em style="font-style:normal;font-size:11px;color:var(--muted)">(n)</em></span>
+              <span class="input-val" id="disp-cases" style="color:var(--orange)">28,616</span>
+            </div>
+            <input type="range"  id="sl-cases"  min="1" max="50000" value="28616" step="1"
+                   style="accent-color:var(--orange)" oninput="syncCases(this.value)">
+            <input type="number" id="num-cases" min="1" max="50000" value="28616"
+                   class="num-input" oninput="syncCases(this.value)">
+            <div class="input-hint">Confirmed + probable cases recorded. Move the slider or type directly.</div>
+          </div>
+
+          <!-- Deaths -->
+          <div class="input-group">
+            <div class="input-label">
+              <span class="input-name">Total Deaths <em style="font-style:normal;font-size:11px;color:var(--muted)">(k)</em></span>
+              <span class="input-val" id="disp-deaths" style="color:var(--red)">11,310</span>
+            </div>
+            <input type="range"  id="sl-deaths"  min="0" max="28616" value="11310" step="1"
+                   style="accent-color:var(--red)" oninput="syncDeaths(this.value)">
+            <input type="number" id="num-deaths" min="0" max="28616" value="11310"
+                   class="num-input" oninput="syncDeaths(this.value)">
+            <div class="input-hint">Deaths cannot exceed total cases — the slider maximum updates automatically.</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- CI Visualisation card -->
+      <div class="card" style="animation:fade-up .4s ease .25s both">
+        <div class="card-head">
+          <div>
+            <div class="kicker">95% Confidence Interval · Wilson Score Method</div>
+            <div class="ctitle">Uncertainty Range</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="ci-section">
+            <div class="ci-label-row">
+              <span class="ci-label">0%</span>
+              <span class="ci-label" style="color:var(--mid)">95% CONFIDENCE INTERVAL</span>
+              <span class="ci-label">100%</span>
+            </div>
+            <div class="ci-track" id="ci-track">
+              <div class="ci-fill"     id="ci-fill"     style="background:var(--purple)"></div>
+              <div class="ci-estimate" id="ci-estimate" style="background:var(--purple)"></div>
+            </div>
+            <div class="ci-pct-row">
+              <span class="ci-pct" id="ci-lo-lbl" style="color:var(--green)"></span>
+              <span class="ci-pct" style="color:var(--muted)">▲ estimate ▲</span>
+              <span class="ci-pct" id="ci-hi-lbl" style="color:var(--red)"></span>
+            </div>
+          </div>
+
+          <div class="ci-bounds-row">
+            <div class="ci-bound">
+              <div class="ci-bound-lbl">LOWER BOUND</div>
+              <div class="ci-bound-val" id="ci-lo-big" style="color:var(--green)">—</div>
+            </div>
+            <div class="ci-bound">
+              <div class="ci-bound-lbl">POINT ESTIMATE</div>
+              <div class="ci-bound-val" id="ci-est-big" style="color:var(--purple)">—</div>
+            </div>
+            <div class="ci-bound">
+              <div class="ci-bound-lbl">UPPER BOUND</div>
+              <div class="ci-bound-val" id="ci-hi-big" style="color:var(--red)">—</div>
+            </div>
+          </div>
+
+          <div id="result-badge-wrap" style="margin-top:14px"></div>
+
+        </div>
+      </div>
+
+    </div><!-- /left col -->
+
+    <!-- RIGHT: CHART -->
+    <div class="card" style="animation:fade-up .4s ease .3s both">
+      <div class="card-head">
+        <div>
+          <div class="kicker">Historical Ebola Outbreaks · 1976–2022</div>
+          <div class="ctitle">CFR Benchmark — All Known Outbreaks</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:2px;background:var(--orange)"></div>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Your Input</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:2px;background:var(--cyan)"></div>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">2014 West Africa</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:2px;background:rgba(148,163,184,.4)"></div>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Other outbreaks</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="canvas-wrap">
+          <canvas id="cfr-chart"
+                  aria-label="Horizontal bar chart comparing CFR across historical Ebola outbreaks and user input">
+          </canvas>
+        </div>
+        <div style="margin-top:14px;padding:12px 16px;background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.2);border-radius:8px;font-size:11.5px;color:var(--mid);line-height:1.6">
+          <strong style="color:var(--cyan);font-family:var(--mono);font-size:9px;letter-spacing:.08em">WHY IS 2014 WEST AFRICA LOWER? · </strong>
+          The 2014–2016 outbreak had a lower CFR than most prior outbreaks (39.5% vs 52–88%) largely
+          because it occurred in densely populated urban areas where detection rates were higher —
+          including milder or subclinical infections counted in the denominator.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <!-- NOTE -->
+  <div class="note" style="animation:fade-up .4s ease .35s both">
+    <strong>⚠ STATISTICAL NOTE · </strong>
+    The Wilson Score confidence interval is preferred over the Wald interval for proportions near 0 or 1
+    because it maintains coverage probability even with small samples. For very small n (n&lt;30),
+    interpret CI bounds with extra caution. CFR figures from historical outbreaks are point estimates
+    from WHO Disease Outbreak News reports and may differ from later revised figures.
+    This tool is for educational purposes only and does not constitute clinical or epidemiological advice.
+  </div>
+
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────── -->
+<footer>
+  <span>SOURCES: WHO DISEASE OUTBREAK NEWS · CDC MMWR · COLTART ET AL. LANCET 2017 · ALL CALCULATIONS CLIENT-SIDE</span>
+  <a class="ft-link" href="../index.html">← Back to Hub</a>
+</footer>
+
+<!-- ── SCRIPT ───────────────────────────────────────────── -->
+<script>
+'use strict';
+
+/* ── HISTORICAL DATA ─────────────────────────────────── */
+const HIST = [
+  { name:"1976 Yambuku (DRC)", cfr:88.1, highlight:false },
+  { name:"1995 Kikwit (DRC)",  cfr:80.6, highlight:false },
+  { name:"2007 DRC",           cfr:70.8, highlight:false },
+  { name:"2018 DRC (N.Kivu)", cfr:66.0, highlight:false },
+  { name:"2021 Guinea",        cfr:52.2, highlight:false },
+  { name:"2000 Gulu (Uganda)", cfr:52.7, highlight:false },
+  { name:"2022 Uganda",        cfr:47.0, highlight:false },
+  { name:"2014 West Africa",   cfr:39.5, highlight:true  },
+];
+
+/* ── CATEGORIES ─────────────────────────────────────── */
+const CATS = [
+  { min:70,  label:"EXTREME",   color:"#ef4444" },
+  { min:50,  label:"VERY HIGH", color:"#f97316" },
+  { min:35,  label:"HIGH",      color:"#fbbf24" },
+  { min:0,   label:"MODERATE",  color:"#22c55e" },
+];
+const getCategory = cfr => CATS.find(c => cfr >= c.min) || CATS[CATS.length-1];
+
+/* ── WILSON SCORE CI ─────────────────────────────────── */
+function wilsonCI(k, n) {
+  if (n === 0) return { est:0, lo:0, hi:0 };
+  const z  = 1.96;
+  const p  = k / n;
+  const z2 = z * z;
+  const dn = 1 + z2 / n;
+  const ct = (p + z2 / (2*n)) / dn;
+  const mg = (z / dn) * Math.sqrt(p*(1-p)/n + z2/(4*n*n));
+  return {
+    est: p * 100,
+    lo:  Math.max(0, (ct - mg)) * 100,
+    hi:  Math.min(1, (ct + mg)) * 100,
+  };
+}
+
+/* ── CHART.JS SETUP ──────────────────────────────────── */
+Chart.defaults.color       = '#475569';
+Chart.defaults.borderColor = '#152040';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size   = 10;
+
+/* Custom plugin: CFR% labels to the right of each bar */
+const cfrLabelPlugin = {
+  id: 'cfrLabels',
+  afterDraw(chart) {
+    const { ctx, scales:{ x }, data } = chart;
+    data.datasets[0].data.forEach((val, i) => {
+      if (!val && val !== 0) return;
+      const yScale = chart.scales.y;
+      const yPos   = yScale.getPixelForValue(i);
+      const xPos   = x.getPixelForValue(val) + 7;
+      ctx.save();
+      ctx.fillStyle    = data.datasets[0].backgroundColor[i];
+      ctx.font         = "600 10px 'IBM Plex Mono', monospace";
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${Number(val).toFixed(1)}%`, xPos, yPos);
+      ctx.restore();
+    });
+  },
+};
+Chart.register(cfrLabelPlugin);
+
+let cfrChart = null;
+
+function buildChart(userCFR) {
+  const combined = [
+    ...HIST.map(o => ({ ...o, isInput:false })),
+    { name:"▶ Your Input", cfr: userCFR, isInput:true, highlight:false },
+  ].sort((a,b) => b.cfr - a.cfr);
+
+  const labels = combined.map(o => o.name);
+  const data   = combined.map(o => parseFloat(o.cfr.toFixed(2)));
+  const colors = combined.map(o =>
+    o.isInput   ? '#f97316' :
+    o.highlight ? '#22d3ee' :
+                  'rgba(148,163,184,0.35)'
+  );
+  const borders = combined.map(o =>
+    o.isInput   ? '#f97316' :
+    o.highlight ? '#22d3ee' :
+                  'rgba(148,163,184,0.5)'
+  );
+
+  if (cfrChart) {
+    cfrChart.data.labels                         = labels;
+    cfrChart.data.datasets[0].data               = data;
+    cfrChart.data.datasets[0].backgroundColor    = colors;
+    cfrChart.data.datasets[0].borderColor        = borders;
+    cfrChart.update('active');
+    return;
+  }
+
+  const ctx = document.getElementById('cfr-chart').getContext('2d');
+  cfrChart  = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data, backgroundColor: colors, borderColor: borders,
+        borderWidth: 1, borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend:  { display: false },
+        tooltip: {
+          backgroundColor: '#0b1229', borderColor: '#152040', borderWidth: 1,
+          titleColor: '#94a3b8', bodyColor: '#e2e8f0',
+          titleFont: { family:"'IBM Plex Mono'", size:10 },
+          bodyFont:  { family:"'IBM Plex Mono'", size:11 },
+          padding: 12,
+          callbacks: { label: ctx => ` CFR: ${Number(ctx.raw).toFixed(1)}%` },
+        },
+        cfrLabels: true,
+      },
+      layout: { padding: { right: 60 } },
+      scales: {
+        x: {
+          grid:  { color:'#152040' },
+          ticks: { color:'#475569', font:{ family:"'IBM Plex Mono'", size:8.5 }, callback: v => v+'%' },
+          max:   100, beginAtZero: true,
+        },
+        y: {
+          grid:  { display: false },
+          ticks: { color:'#e2e8f0', font:{ family:"'IBM Plex Mono'", size:10 } },
+        },
+      },
+    },
+  });
+}
+
+/* ── UPDATE ALL UI ───────────────────────────────────── */
+function update() {
+  const n = parseInt(document.getElementById('sl-cases').value)  || 1;
+  const k = parseInt(document.getElementById('sl-deaths').value) || 0;
+  const { est, lo, hi } = wilsonCI(k, n);
+  const cat = getCategory(est);
+
+  /* KPI cards */
+  document.getElementById('kv-cfr').textContent   = `${est.toFixed(2)}%`;
+  document.getElementById('kv-cfr').style.color   = cat.color;
+  document.getElementById('kv-lo').textContent    = `${lo.toFixed(2)}%`;
+  document.getElementById('kv-hi').textContent    = `${hi.toFixed(2)}%`;
+  document.getElementById('kv-cat').textContent   = cat.label;
+  document.getElementById('kv-cat').style.color   = cat.color;
+
+  /* CI bar */
+  const fill     = document.getElementById('ci-fill');
+  const estimate = document.getElementById('ci-estimate');
+  fill.style.left      = lo + '%';
+  fill.style.width     = (hi - lo) + '%';
+  fill.style.background = cat.color;
+  estimate.style.left      = `calc(${est}% - 1.5px)`;
+  estimate.style.background = cat.color;
+  document.getElementById('ci-lo-lbl').textContent  = lo.toFixed(2) + '%';
+  document.getElementById('ci-hi-lbl').textContent  = hi.toFixed(2) + '%';
+  document.getElementById('ci-lo-big').textContent  = lo.toFixed(2) + '%';
+  document.getElementById('ci-hi-big').textContent  = hi.toFixed(2) + '%';
+  document.getElementById('ci-est-big').textContent = est.toFixed(2) + '%';
+  document.getElementById('ci-est-big').style.color = cat.color;
+  document.getElementById('ci-lo-big').style.color  = '#22c55e';
+  document.getElementById('ci-hi-big').style.color  = '#ef4444';
+
+  /* Badge */
+  document.getElementById('result-badge-wrap').innerHTML = `
+    <div class="result-badge" style="color:${cat.color};border-color:${cat.color}44;background:${cat.color}10">
+      <div class="result-dot" style="background:${cat.color}"></div>
+      ${cat.label} · ${est.toFixed(1)}% CFR · CI [${lo.toFixed(1)}%, ${hi.toFixed(1)}%]
+    </div>`;
+
+  /* Chart */
+  buildChart(parseFloat(est.toFixed(2)));
+}
+
+/* ── SYNC HELPERS ────────────────────────────────────── */
+function syncCases(val) {
+  const n = Math.max(1, Math.min(50000, parseInt(val)||1));
+  document.getElementById('sl-cases').value  = n;
+  document.getElementById('num-cases').value = n;
+  document.getElementById('disp-cases').textContent = n.toLocaleString();
+  /* keep deaths ≤ cases */
+  const k = parseInt(document.getElementById('sl-deaths').value)||0;
+  if (k > n) syncDeaths(n);
+  document.getElementById('sl-deaths').max  = n;
+  document.getElementById('num-deaths').max = n;
+  update();
+}
+
+function syncDeaths(val) {
+  const maxK = parseInt(document.getElementById('sl-cases').value)||1;
+  const k    = Math.max(0, Math.min(maxK, parseInt(val)||0));
+  document.getElementById('sl-deaths').value = k;
+  document.getElementById('num-deaths').value = k;
+  document.getElementById('disp-deaths').textContent = k.toLocaleString();
+  update();
+}
+
+/* ── INIT ────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  update();
+});
+</script>
+</body>
+</html>

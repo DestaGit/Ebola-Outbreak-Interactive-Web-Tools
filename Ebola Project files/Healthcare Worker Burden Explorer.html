@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCW Explorer · Ebola Data Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── TOKENS ────────────────────────────────────────── */
+    :root {
+      --bg:      #04070f; --surface: #080d1e; --card:   #0b1229;
+      --card2:   #0d1530; --border: #152040;  --border-hi: #1e3060;
+      --orange:  #f97316; --red:    #ef4444;  --green:  #22c55e;
+      --cyan:    #22d3ee; --yellow: #fbbf24;  --purple: #c084fc;
+      --blue:    #60a5fa; --text:   #e2e8f0;  --mid:    #94a3b8;
+      --muted:   #475569;
+      --mono:    'IBM Plex Mono', 'Courier New', monospace;
+      --display: 'Barlow Condensed', system-ui, sans-serif;
+    }
+
+    /* ── RESET ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column;
+      background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 0L0 0 0 32' fill='none' stroke='%230a1428' stroke-width='0.6'/%3E%3C/svg%3E");
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @keyframes fade-up  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes blink    { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+    @keyframes count-in { from{opacity:0} to{opacity:1} }
+
+    /* ── HEADER ────────────────────────────────────────── */
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 28px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 200; flex-shrink: 0;
+    }
+    .hd-brand { display: flex; align-items: center; gap: 12px; }
+    .hd-pill  {
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3);
+      border-radius: 20px; padding: 3px 12px;
+      font-family: var(--mono); font-size: 9px; color: var(--red);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .hd-pill-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--red); animation: blink 1.4s step-end infinite;
+    }
+    .hd-title { font-family: var(--display); font-size: 20px; font-weight: 900; letter-spacing: .05em; }
+    .hd-sub   { font-family: var(--mono); font-size: 8.5px; letter-spacing: .13em; color: var(--muted); margin-top: 2px; }
+    .hd-back  {
+      font-family: var(--mono); font-size: 9px; color: var(--muted);
+      text-decoration: none; border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 12px; transition: all .15s;
+    }
+    .hd-back:hover { color: var(--text); border-color: var(--border-hi); }
+
+    /* ── MAIN LAYOUT ───────────────────────────────────── */
+    main { flex: 1; padding: 18px 28px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── CARDS ─────────────────────────────────────────── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .card-head {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-body { padding: 20px; }
+    .kicker { font-family: var(--mono); font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .ctitle { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--text); }
+
+    /* ── KPI ROW ───────────────────────────────────────── */
+    .kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+    .kpi {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px;
+      animation: fade-up .4s ease both;
+    }
+    .kpi-val {
+      font-family: var(--display); font-size: 44px; font-weight: 900;
+      line-height: 1; letter-spacing: -.01em; margin: 3px 0 6px;
+    }
+    .kpi-lbl  { font-size: 12px; color: var(--muted); }
+    .kpi-sub  { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+
+    /* ── TOGGLE ─────────────────────────────────────────── */
+    .toggle-row { display: flex; gap: 6px; }
+    .tgl {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .03em;
+      padding: 6px 18px; border-radius: 7px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); transition: all .15s; white-space: nowrap;
+    }
+    .tgl:hover { border-color: var(--border-hi); color: var(--text); }
+    .tgl.active {
+      background: rgba(239,68,68,.12);
+      border-color: var(--red); color: var(--red);
+    }
+
+    /* ── CHART CANVAS ──────────────────────────────────── */
+    .canvas-wrap { position: relative; }
+
+    /* ── COUNTRY CARDS ─────────────────────────────────── */
+    .country-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .ctry-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      animation: fade-up .4s ease both;
+    }
+    .ctry-flag { font-size: 32px; margin-bottom: 10px; display: block; }
+    .ctry-name {
+      font-family: var(--display); font-size: 20px; font-weight: 700;
+      color: var(--text); margin-bottom: 16px;
+    }
+    .ctry-stat { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .ctry-stat:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .ctry-stat-lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+    .ctry-stat-val { font-family: var(--display); font-size: 28px; font-weight: 900; line-height: 1; }
+    .ctry-stat-sub { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+
+    /* Mini bar */
+    .mini-bar-wrap { margin-top: 14px; }
+    .mini-bar-row  { margin-bottom: 8px; }
+    .mini-bar-top  { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .mini-bar-lbl  { font-size: 10.5px; color: var(--mid); }
+    .mini-bar-pct  { font-family: var(--mono); font-size: 10.5px; font-weight: 600; }
+    .mini-track    { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .mini-fill     { height: 100%; border-radius: 3px; }
+
+    /* ── CONTEXT CARDS ─────────────────────────────────── */
+    .context-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .ctx-card {
+      background: rgba(239,68,68,.04);
+      border: 1px solid rgba(239,68,68,.18);
+      border-radius: 12px; padding: 20px;
+      animation: fade-up .5s ease both;
+    }
+    .ctx-icon  { font-size: 28px; margin-bottom: 10px; display: block; }
+    .ctx-title {
+      font-family: var(--display); font-size: 18px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px; line-height: 1.2;
+    }
+    .ctx-body  { font-size: 12px; color: var(--mid); line-height: 1.7; }
+    .ctx-stat  {
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(239,68,68,.2);
+      font-family: var(--mono); font-size: 10px; color: var(--muted);
+    }
+    .ctx-stat strong { color: var(--red); }
+
+    /* ── COMPARISON BAR (horizontal, CSS) ──────────────── */
+    .cfr-compare { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+    .cfr-cmp-row { }
+    .cfr-cmp-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .cfr-cmp-lbl { font-size: 11.5px; color: var(--text); }
+    .cfr-cmp-val { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+    .cfr-cmp-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .cfr-cmp-fill  { height: 100%; border-radius: 3px; transition: width .8s ease; }
+
+    /* ── LEGEND ─────────────────────────────────────────── */
+    .legend-row { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+    .leg { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; color: var(--muted); }
+    .leg-line { width: 20px; height: 2px; border-radius: 1px; }
+    .leg-dashed { border-top: 2px dashed; background: transparent !important; height: 0 !important; }
+
+    /* ── FOOTER ─────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border); padding: 10px 28px;
+      display: flex; justify-content: space-between;
+      font-family: var(--mono); font-size: 8px; color: var(--muted);
+      flex-wrap: wrap; gap: 6px; flex-shrink: 0;
+    }
+    .ft-link { color: var(--muted); text-decoration: none; }
+    .ft-link:hover { color: var(--mid); }
+
+    /* ── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .country-grid { grid-template-columns: 1fr 1fr; }
+      .context-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
+      .kpi-row      { grid-template-columns: 1fr 1fr; }
+      .country-grid { grid-template-columns: 1fr; }
+      .context-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .kpi-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────── -->
+<header>
+  <div class="hd-brand">
+    <div class="hd-pill">
+      <div class="hd-pill-dot"></div>
+      TOOL 06 / 06
+    </div>
+    <div>
+      <div class="hd-title">🏥 HCW BURDEN EXPLORER</div>
+      <div class="hd-sub">Healthcare Worker Infections · 2014–2016 · West Africa Ebola Outbreak</div>
+    </div>
+  </div>
+  <a class="hd-back" href="../index.html">← Hub</a>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────── -->
+<main>
+
+  <!-- PAGE INTRO -->
+  <div style="animation:fade-up .4s ease both">
+    <div class="kicker">Tool 06 / 06 · Occupational Risk Analysis</div>
+    <div style="font-family:var(--display);font-size:26px;font-weight:900;color:var(--text);margin-bottom:4px">
+      Healthcare Worker Burden Explorer
+    </div>
+    <div style="font-size:13px;color:var(--mid);max-width:720px;line-height:1.6">
+      Deep dive into the disproportionate toll on healthcare workers during the 2014–2016 outbreak.
+      Explore the HCW infection timeline, country-level breakdown, and the systemic factors that
+      drove a 57.9% fatality rate — 18 percentage points above the general population.
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi" style="animation-delay:.05s;border-top:2px solid var(--yellow)">
+      <div class="kicker">HCW Infections</div>
+      <div class="kpi-val" id="kv-hcw" style="color:var(--yellow)">0</div>
+      <div class="kpi-lbl">Total confirmed HCW cases</div>
+      <div class="kpi-sub">All 3 epicenter countries</div>
+    </div>
+    <div class="kpi" style="animation-delay:.1s;border-top:2px solid var(--red)">
+      <div class="kicker">HCW Deaths</div>
+      <div class="kpi-val" id="kv-hd" style="color:var(--red)">0</div>
+      <div class="kpi-lbl">HCW fatalities recorded</div>
+      <div class="kpi-sub">57.9% case fatality rate</div>
+    </div>
+    <div class="kpi" style="animation-delay:.15s;border-top:2px solid var(--red)">
+      <div class="kicker">HCW vs General CFR</div>
+      <div class="kpi-val" id="kv-diff" style="color:var(--red);font-size:32px">+18.4pp</div>
+      <div class="kpi-lbl">Excess fatality rate</div>
+      <div class="kpi-sub">57.9% HCW vs 39.5% general</div>
+    </div>
+    <div class="kpi" style="animation-delay:.2s;border-top:2px solid var(--orange)">
+      <div class="kicker">Share of Total Cases</div>
+      <div class="kpi-val" id="kv-share" style="color:var(--orange)">3.1%</div>
+      <div class="kpi-lbl">HCW proportion of all cases</div>
+      <div class="kpi-sub">886 of 28,616 total</div>
+    </div>
+  </div>
+
+  <!-- VIEW TOGGLE + CHART CARD -->
+  <div class="card" style="animation:fade-up .4s ease .25s both">
+    <div class="card-head">
+      <div>
+        <div class="kicker" id="chart-kicker">Monthly Trend · Aug 2014 – Jul 2015</div>
+        <div class="ctitle" id="chart-title">HCW Cases vs General Population Cases</div>
+      </div>
+      <div class="toggle-row" role="group" aria-label="Select view">
+        <button class="tgl active" id="tgl-timeline" onclick="switchView('timeline')">📈 Timeline</button>
+        <button class="tgl"        id="tgl-country"  onclick="switchView('country')">🌍 By Country</button>
+      </div>
+    </div>
+
+    <!-- TIMELINE VIEW -->
+    <div id="view-timeline" class="card-body">
+      <div class="canvas-wrap" style="height:260px">
+        <canvas id="timeline-chart"
+                aria-label="Dual-axis line chart showing HCW cases on left axis and general population cases on right axis from August 2014 to July 2015">
+        </canvas>
+      </div>
+      <div class="legend-row">
+        <div class="leg">
+          <div class="leg-line" style="background:var(--yellow)"></div>
+          HCW Cases (left axis)
+        </div>
+        <div class="leg">
+          <div class="leg-line" style="background:var(--orange)"></div>
+          General Cases (right axis)
+        </div>
+        <div class="leg">
+          <div class="leg-line" style="background:var(--red)"></div>
+          HCW Deaths (left axis)
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:12px 16px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-radius:8px;font-size:11.5px;color:var(--mid);line-height:1.6">
+        <strong style="color:var(--yellow);font-family:var(--mono);font-size:9px;letter-spacing:.08em">⚕ KEY FINDING · </strong>
+        HCW infections surged and peaked in <strong style="color:var(--yellow)">October 2014</strong> —
+        the same month as the general population peak. However, the HCW surge began earlier (August 2014)
+        and the HCW peak proportion was disproportionately high, reflecting overwhelmed protective systems
+        before Ebola Treatment Units were established at scale. The right axis shows general population
+        cases; left axis shows HCW cases and deaths.
+      </div>
+    </div>
+
+    <!-- COUNTRY VIEW (hidden initially) -->
+    <div id="view-country" class="card-body" style="display:none">
+      <div class="country-grid" id="country-cards"></div>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- CFR COMPARISON BAR CHART (always visible) -->
+  <div class="card" style="animation:fade-up .4s ease .3s both">
+    <div class="card-head">
+      <div>
+        <div class="kicker">HCW vs General Population · Case Fatality Rate</div>
+        <div class="ctitle">CFR Comparison by Country</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px" id="cfr-compare-section"></div>
+    </div>
+  </div>
+
+  <!-- CONTEXT CARDS -->
+  <div>
+    <div class="kicker" style="margin-bottom:12px">Why was HCW mortality so high? · Three systemic factors</div>
+    <div class="context-grid">
+      <div class="ctx-card" style="animation-delay:.35s">
+        <span class="ctx-icon">🧤</span>
+        <div class="ctx-title">PPE Shortages &amp; Supply Chain Failure</div>
+        <div class="ctx-body">
+          By mid-2014 the outbreak scale far exceeded available Personal Protective Equipment across
+          Guinea, Liberia, and Sierra Leone. Healthcare workers treated actively infectious patients
+          with improvised or inadequate protection — thin gloves, no sealed masks, repurposed
+          raincoats. MSF reported critical PPE gaps in July 2014, weeks before the WHO PHEIC.
+        </div>
+        <div class="ctx-stat">
+          Peak HCW infection month: <strong>Oct 2014</strong> · 185 new HCW cases in 30 days
+        </div>
+      </div>
+      <div class="ctx-card" style="animation-delay:.4s">
+        <span class="ctx-icon">🔬</span>
+        <div class="ctx-title">Repeated High Viral Load Exposure</div>
+        <div class="ctx-body">
+          Healthcare workers had sustained, repeated contact with patients at their most infectious stage —
+          during bleeding, vomiting, and diarrhoea. Unlike a single community-level exposure, a nurse
+          treating multiple Ebola patients in a shift faced cumulative viral load far exceeding a single
+          household exposure. Needle-stick injuries and contaminated surfaces compounded risk significantly.
+        </div>
+        <div class="ctx-stat">
+          Kenema Government Hospital, Sierra Leone: <strong>most HCW deaths</strong> of any single facility
+        </div>
+      </div>
+      <div class="ctx-card" style="animation-delay:.45s">
+        <span class="ctx-icon">🏥</span>
+        <div class="ctx-title">Pre-existing Healthcare System Fragility</div>
+        <div class="ctx-body">
+          Liberia had 0.01 physicians per 1,000 people before the outbreak. Sierra Leone had 0.02.
+          Guinea had 0.10. As HCWs fell ill and died, remaining staff faced unsustainable patient loads
+          with inadequate training in Ebola-specific infection control. Each HCW death removed a
+          multiplier — a single doctor or nurse whose absence meant dozens more patients went untreated.
+        </div>
+        <div class="ctx-stat">
+          Liberia physician density: <strong>1 per 100,000 people</strong> at outbreak start
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────── -->
+<footer>
+  <span>SOURCES: WHO HCW SITUATION REPORTS · KILMARX ET AL. LANCET 2014 · CDC MMWR · MATANOCK ET AL. 2014 · DATA APPROXIMATE</span>
+  <a class="ft-link" href="../index.html">← Back to Hub</a>
+</footer>
+
+<!-- ── SCRIPT ───────────────────────────────────────────── -->
+<script>
+'use strict';
+
+/* ── DATA ──────────────────────────────────────────────── */
+const HCW_MONTHS = [
+  { m:"Aug '14", hcw:45,  hd:28,  gen:1635  },
+  { m:"Sep '14", hcw:120, hd:72,  gen:3280  },
+  { m:"Oct '14", hcw:185, hd:105, gen:8015  },
+  { m:"Nov '14", hcw:140, hd:79,  gen:3860  },
+  { m:"Dec '14", hcw:98,  hd:56,  gen:3402  },
+  { m:"Jan '15", hcw:65,  hd:36,  gen:1785  },
+  { m:"Feb '15", hcw:48,  hd:26,  gen:1352  },
+  { m:"Mar '15", hcw:32,  hd:16,  gen:948   },
+  { m:"Apr '15", hcw:24,  hd:11,  gen:656   },
+  { m:"May '15", hcw:18,  hd:8,   gen:462   },
+  { m:"Jun '15", hcw:12,  hd:5,   gen:308   },
+  { m:"Jul '15", hcw:19,  hd:8,   gen:476   },
+];
+
+const HCW_COUNTRIES = [
+  { name:"Liberia",      flag:"🇱🇷", cases:372, deaths:180, hcfr:48.4, gcfr:45.1, color:"#c084fc", iso:"LBR" },
+  { name:"Sierra Leone", flag:"🇸🇱", cases:306, deaths:221, hcfr:72.2, gcfr:28.0, color:"#f97316", iso:"SLE" },
+  { name:"Guinea",       flag:"🇬🇳", cases:208, deaths:112, hcfr:53.8, gcfr:66.7, color:"#ef4444", iso:"GIN" },
+];
+
+/* ── CHART.JS DEFAULTS ────────────────────────────────── */
+Chart.defaults.color       = '#475569';
+Chart.defaults.borderColor = '#152040';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size   = 10;
+
+const TIP = {
+  backgroundColor: '#0b1229', borderColor: '#152040', borderWidth: 1,
+  titleColor: '#94a3b8', bodyColor: '#e2e8f0',
+  titleFont: { family:"'IBM Plex Mono'", size:10 },
+  bodyFont:  { family:"'IBM Plex Mono'", size:11 },
+  padding: 12,
+};
+
+/* ── ANIMATED COUNTER ──────────────────────────────────── */
+function animateCounter(el, target, suffix='', duration=1600) {
+  const start = performance.now();
+  const step = now => {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(ease * target).toLocaleString() + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ── TIMELINE CHART ────────────────────────────────────── */
+function buildTimelineChart() {
+  const ctx = document.getElementById('timeline-chart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: HCW_MONTHS.map(d => d.m),
+      datasets: [
+        {
+          label: 'HCW Cases',
+          data: HCW_MONTHS.map(d => d.hcw),
+          borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.12)',
+          fill: true, tension: 0.4, borderWidth: 2.5,
+          pointRadius: 4, pointHoverRadius: 6,
+          pointBackgroundColor: '#fbbf24',
+          yAxisID: 'y',
+        },
+        {
+          label: 'HCW Deaths',
+          data: HCW_MONTHS.map(d => d.hd),
+          borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)',
+          fill: false, tension: 0.4, borderWidth: 2,
+          pointRadius: 3, pointHoverRadius: 5,
+          pointBackgroundColor: '#ef4444',
+          borderDash: [5,3],
+          yAxisID: 'y',
+        },
+        {
+          label: 'General Cases',
+          data: HCW_MONTHS.map(d => d.gen),
+          borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.06)',
+          fill: true, tension: 0.4, borderWidth: 1.5,
+          pointRadius: 2, pointHoverRadius: 4,
+          pointBackgroundColor: '#f97316',
+          borderDash: [3,3],
+          yAxisID: 'y1',
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TIP,
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: '#152040' },
+          ticks: { color: '#475569', font: { family:"'IBM Plex Mono'", size:9 } },
+        },
+        y: {
+          type: 'linear', position: 'left',
+          title: {
+            display: true, text: 'HCW Cases / Deaths',
+            color: '#fbbf24', font: { family:"'IBM Plex Mono'", size:9 },
+          },
+          grid: { color: '#152040' },
+          ticks: { color: '#475569', font: { family:"'IBM Plex Mono'", size:9 } },
+          beginAtZero: true,
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          title: {
+            display: true, text: 'General Population Cases',
+            color: '#f97316', font: { family:"'IBM Plex Mono'", size:9 },
+          },
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: '#475569', font: { family:"'IBM Plex Mono'", size:9 },
+            callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v,
+          },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+/* ── COUNTRY CARDS ────────────────────────────────────── */
+function buildCountryCards() {
+  const wrap = document.getElementById('country-cards');
+  HCW_COUNTRIES.forEach(c => {
+    const survivors = c.cases - c.deaths;
+    const cfrDelta  = (c.hcfr - c.gcfr).toFixed(1);
+    const deltaClr  = cfrDelta >= 0 ? '#ef4444' : '#22c55e';
+    const deltaSign = cfrDelta >= 0 ? '+' : '';
+    const clr       = c.color;
+
+    wrap.innerHTML += `
+      <div class="ctry-card">
+        <span class="ctry-flag">${c.flag}</span>
+        <div class="ctry-name" style="color:${clr}">${c.name}</div>
+
+        <div class="ctry-stat">
+          <div class="ctry-stat-lbl">HCW Cases</div>
+          <div class="ctry-stat-val" style="color:var(--yellow)">${c.cases.toLocaleString()}</div>
+          <div class="ctry-stat-sub">${c.cases} of 886 total · ${((c.cases/886)*100).toFixed(1)}% share</div>
+        </div>
+
+        <div class="ctry-stat">
+          <div class="ctry-stat-lbl">HCW Deaths</div>
+          <div class="ctry-stat-val" style="color:var(--red)">${c.deaths.toLocaleString()}</div>
+          <div class="ctry-stat-sub">HCW CFR: <strong style="color:var(--red)">${c.hcfr.toFixed(1)}%</strong></div>
+        </div>
+
+        <div class="ctry-stat">
+          <div class="ctry-stat-lbl">Survivors</div>
+          <div class="ctry-stat-val" style="color:var(--green)">${survivors}</div>
+          <div class="ctry-stat-sub">${(100 - c.hcfr).toFixed(1)}% HCW survival rate</div>
+        </div>
+
+        <div class="mini-bar-wrap">
+          <div class="ctry-stat-lbl" style="margin-bottom:8px">CFR Comparison</div>
+          ${[
+            { lbl:'HCW CFR',     val: c.hcfr, clr:'#ef4444' },
+            { lbl:'National CFR',val: c.gcfr, clr },
+          ].map(r => `
+            <div class="mini-bar-row">
+              <div class="mini-bar-top">
+                <span class="mini-bar-lbl">${r.lbl}</span>
+                <span class="mini-bar-pct" style="color:${r.clr}">${r.val.toFixed(1)}%</span>
+              </div>
+              <div class="mini-track">
+                <div class="mini-fill" style="width:${r.val}%;background:${r.clr}"></div>
+              </div>
+            </div>`).join('')}
+          <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:${deltaClr}">
+            HCW excess mortality: ${deltaSign}${cfrDelta}pp vs national average
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+/* ── CFR COMPARISON SECTION ───────────────────────────── */
+function buildCFRCompare() {
+  const wrap = document.getElementById('cfr-compare-section');
+  HCW_COUNTRIES.forEach(c => {
+    const bars = [
+      { lbl:'HCW CFR',      val: c.hcfr, clr:'#ef4444' },
+      { lbl:'National CFR', val: c.gcfr, clr: c.color  },
+      { lbl:'Overall CFR',  val: 39.5,   clr:'#475569' },
+    ];
+    wrap.innerHTML += `
+      <div>
+        <div style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px">
+          ${c.flag} ${c.name}
+        </div>
+        <div class="cfr-compare">
+          ${bars.map(b => `
+            <div class="cfr-cmp-row">
+              <div class="cfr-cmp-top">
+                <span class="cfr-cmp-lbl">${b.lbl}</span>
+                <span class="cfr-cmp-val" style="color:${b.clr}">${b.val.toFixed(1)}%</span>
+              </div>
+              <div class="cfr-cmp-track">
+                <div class="cfr-cmp-fill" style="width:${b.val}%;background:${b.clr}"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  });
+}
+
+/* ── VIEW TOGGLE ──────────────────────────────────────── */
+function switchView(view) {
+  const isTimeline = view === 'timeline';
+  document.getElementById('view-timeline').style.display = isTimeline ? 'block' : 'none';
+  document.getElementById('view-country').style.display  = isTimeline ? 'none'  : 'block';
+  document.getElementById('tgl-timeline').classList.toggle('active', isTimeline);
+  document.getElementById('tgl-country').classList.toggle('active', !isTimeline);
+  document.getElementById('chart-kicker').textContent =
+    isTimeline ? 'Monthly Trend · Aug 2014 – Jul 2015'
+               : 'Country Breakdown · HCW Infections';
+  document.getElementById('chart-title').textContent  =
+    isTimeline ? 'HCW Cases vs General Population Cases'
+               : 'Per-Country HCW Infection & Mortality';
+}
+
+/* ── INIT ─────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  /* Animated KPI counters */
+  setTimeout(() => animateCounter(document.getElementById('kv-hcw'), 886),  80);
+  setTimeout(() => animateCounter(document.getElementById('kv-hd'),  513), 160);
+
+  /* Charts & DOM sections */
+  buildTimelineChart();
+  buildCountryCards();
+  buildCFRCompare();
+});
+</script>
+</body>
+</html>
